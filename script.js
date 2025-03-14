@@ -1,38 +1,53 @@
 const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
+// Register a new team
 function registerTeam() {
     const teamName = document.getElementById("teamNameInput").value;
-    
-    fetch(`${backendUrl}/register_team?team_name=${encodeURIComponent(teamName)}`, { method: "POST" })
+    if (!teamName) {
+        alert("Please enter a team name.");
+        return;
+    }
+
+    fetch(`${backendUrl}/register_team?team_name=${encodeURIComponent(teamName)}`)
         .then(response => response.json())
         .then(data => {
             alert(data.message);
-            document.getElementById("registration").style.display = "none";
-            document.getElementById("draft").style.display = "block";
+            updateRegisteredTeams();
         })
         .catch(error => console.error("Error registering team:", error));
 }
 
-function draftDriver() {
+// Enter draft mode
+function enterDraftMode() {
     const teamName = document.getElementById("teamNameInput").value;
-    const driverName = document.getElementById("driverSelect").value;
+    if (!teamName) {
+        alert("Please enter your registered team name first.");
+        return;
+    }
 
-    fetch(`${backendUrl}/draft_driver?team_name=${encodeURIComponent(teamName)}&driver_name=${encodeURIComponent(driverName)}`, { method: "POST" })
+    fetch(`${backendUrl}/enter_draft_mode?team_name=${encodeURIComponent(teamName)}`)
         .then(response => response.json())
         .then(data => {
             alert(data.message);
+            updateRegisteredTeams();
         })
-        .catch(error => console.error("Error drafting driver:", error));
+        .catch(error => console.error("Error entering draft mode:", error));
 }
 
-function tradeDriver() {
-    const team1 = document.getElementById("tradeTeam1").value;
-    const team2 = document.getElementById("tradeTeam2").value;
-    const driver1 = document.getElementById("tradeDriver1").value;
-    const driver2 = document.getElementById("tradeDriver2").value;
-
-    fetch(`${backendUrl}/trade_driver?team1=${team1}&team2=${team2}&driver1=${driver1}&driver2=${driver2}`, { method: "POST" })
+// Update registered teams list
+function updateRegisteredTeams() {
+    fetch(`${backendUrl}/get_registered_teams`)
         .then(response => response.json())
-        .then(data => alert(data.message))
-        .catch(error => console.error("Error trading driver:", error));
+        .then(data => {
+            const teamTable = document.getElementById("teamTable");
+            teamTable.innerHTML = "<tr><th>Team Name</th><th>Status</th></tr>";
+
+            for (const [team, status] of Object.entries(data.teams)) {
+                teamTable.innerHTML += `<tr><td>${team}</td><td>${status}</td></tr>`;
+            }
+        })
+        .catch(error => console.error("Error fetching registered teams:", error));
 }
+
+// Auto-refresh the team list every 5 seconds
+setInterval(updateRegisteredTeams, 5000);
