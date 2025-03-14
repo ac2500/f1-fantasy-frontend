@@ -36,12 +36,29 @@ table {
   width: 80%;
   color: white;
   border-collapse: collapse;
+  max-height: 100%;
 }
 
 th, td {
   border: 1px solid red;
   padding: 8px;
   text-align: left;
+}
+
+/* Force both tables to same fixed height, with scroll if needed */
+.left-table table,
+.right-table table {
+  height: 400px;
+  display: block;
+  overflow-y: auto;
+}
+
+/* Thead fix for scrollable table */
+.left-table table tr th,
+.right-table table tr th {
+  position: sticky;
+  top: 0;
+  background-color: black;
 }
 
 /* Layout containers */
@@ -51,16 +68,18 @@ th, td {
   margin-top: 30px;
 }
 
-.left-table, .right-table {
+.left-table,
+.right-table {
   width: 45%;
 }
 
+/* Register & Reset sections */
 .register-section {
   margin-bottom: 20px;
 }
 
 .reset-section {
-  margin-bottom: 20px;
+  margin-top: 40px;
 }
 
 /* Buttons & Inputs */

@@ -1,6 +1,6 @@
 const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
-// 1. Register a Team
+// Register a Team
 function registerTeam() {
   const teamName = document.getElementById("teamNameInput").value.trim();
   if (!teamName) {
@@ -22,7 +22,7 @@ function registerTeam() {
     .catch(err => console.error("Error registering team:", err));
 }
 
-// 2. Update Constructors Table
+// Update Constructors Table
 function updateTeams() {
   fetch(`${backendUrl}/get_registered_teams`)
     .then(res => res.json())
@@ -34,8 +34,8 @@ function updateTeams() {
           <th>Drafted Drivers</th>
         </tr>
       `;
+
       for (const [team, drivers] of Object.entries(data.teams)) {
-        // Build a vertical numbered list
         let driverListHtml = "<ol style='text-align:left; margin:0; padding-left:20px;'>";
         drivers.forEach(driver => {
           driverListHtml += `
@@ -59,11 +59,13 @@ function updateTeams() {
     .catch(err => console.error("Error fetching teams:", err));
 }
 
-// 3. Update Available Drivers Table
+// Update Drivers Table (show entire list, strikethrough drafted)
 function updateDrivers() {
-  fetch(`${backendUrl}/get_available_drivers`)
-    .then(res => res.json())
-    .then(data => {
+  Promise.all([
+    fetch(`${backendUrl}/get_all_drivers`).then(res => res.json()),
+    fetch(`${backendUrl}/get_drafted_status`).then(res => res.json())
+  ])
+    .then(([allData, draftData]) => {
       const driverTable = document.getElementById("driverTable");
       driverTable.innerHTML = `
         <tr>
@@ -71,30 +73,47 @@ function updateDrivers() {
           <th>Draft By</th>
         </tr>
       `;
-      data.drivers.forEach(driver => {
+
+      const draftedStatus = draftData.teams;  // { teamName: [driver1, driver2], ... }
+      let draftedSet = new Set();
+      Object.values(draftedStatus).forEach(drivers => {
+        drivers.forEach(d => draftedSet.add(d));
+      });
+
+      allData.drivers.forEach(driver => {
+        const isDrafted = draftedSet.has(driver);
         driverTable.innerHTML += `
           <tr>
-            <td>${driver}</td>
+            <td style="${isDrafted ? 'text-decoration: line-through; color: gray;' : ''}">
+              ${driver}
+            </td>
             <td>
-              <select onchange="draftDriver('${driver}', this.value)">
-                <option value="">Select Team...</option>
-              </select>
+              ${isDrafted ? 'Drafted' : buildTeamDropdown(driver)}
             </td>
           </tr>
         `;
       });
-      populateTeamDropdowns();
     })
-    .catch(err => console.error("Error fetching drivers:", err));
+    .catch(err => console.error("Error updating drivers:", err));
 }
 
-// 4. Populate 'Draft By' Dropdown
+// Build a dropdown for selecting teams
+function buildTeamDropdown(driverName) {
+  return `
+    <select onchange="draftDriver('${driverName}', this.value)">
+      <option value="">Select Team...</option>
+    </select>
+  `;
+}
+
+// Populate the dropdown with team names
 function populateTeamDropdowns() {
   fetch(`${backendUrl}/get_registered_teams`)
     .then(res => res.json())
     .then(data => {
       const teams = Object.keys(data.teams);
-      const selects = document.querySelectorAll("#driverTable select");
+      // Grab all <select> elements that have an onchange for draftDriver
+      const selects = document.querySelectorAll("td select[onchange^='draftDriver']");
       selects.forEach(select => {
         select.innerHTML = `<option value="">Select Team...</option>`;
         teams.forEach(team => {
@@ -105,16 +124,15 @@ function populateTeamDropdowns() {
     .catch(err => console.error("Error populating team dropdowns:", err));
 }
 
-// 5. Draft a Driver
+// Draft a Driver
 function draftDriver(driverName, teamName) {
-  if (!teamName) return; // user didn't pick a team
+  if (!teamName) return;
   fetch(`${backendUrl}/draft_driver?team_name=${encodeURIComponent(teamName)}&driver_name=${encodeURIComponent(driverName)}`, {
     method: "POST"
   })
     .then(res => res.json())
     .then(data => {
       if (data.detail) {
-        // FastAPI error format
         alert(data.detail);
       } else if (data.error) {
         alert(data.error);
@@ -123,11 +141,12 @@ function draftDriver(driverName, teamName) {
       }
       updateTeams();
       updateDrivers();
+      setTimeout(populateTeamDropdowns, 300);
     })
     .catch(err => console.error("Error drafting driver:", err));
 }
 
-// 6. Undo Draft
+// Undo Draft
 function undoDraft(teamName, driverName) {
   fetch(`${backendUrl}/undo_draft?team_name=${encodeURIComponent(teamName)}&driver_name=${encodeURIComponent(driverName)}`, {
     method: "POST"
@@ -143,11 +162,12 @@ function undoDraft(teamName, driverName) {
       }
       updateTeams();
       updateDrivers();
+      setTimeout(populateTeamDropdowns, 300);
     })
     .catch(err => console.error("Error undoing draft:", err));
 }
 
-// 7. Reset Teams
+// Reset Teams
 function resetTeams() {
   fetch(`${backendUrl}/reset_teams`, { method: "POST" })
     .then(res => res.json())
@@ -155,6 +175,7 @@ function resetTeams() {
       alert(data.message);
       updateTeams();
       updateDrivers();
+      setTimeout(populateTeamDropdowns, 300);
     })
     .catch(err => console.error("Error resetting teams:", err));
 }
@@ -162,3 +183,4 @@ function resetTeams() {
 // Initial Load
 updateTeams();
 updateDrivers();
+setTimeout(populateTeamDropdowns, 300);
