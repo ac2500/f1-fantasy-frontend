@@ -14,9 +14,9 @@ h1 {
   font-size: 32px;
 }
 
-/* ASCII car styling */
-.ascii-car {
-  color: white;
+/* ASCII Car in green */
+.ascii-car-green {
+  color: limegreen;
   font-family: 'Courier New', monospace;
   text-align: center;
   margin-bottom: 20px;
@@ -56,6 +56,10 @@ th, td {
 }
 
 .register-section {
+  margin-bottom: 20px;
+}
+
+.reset-section {
   margin-bottom: 20px;
 }
 

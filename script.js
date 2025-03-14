@@ -22,7 +22,7 @@ function registerTeam() {
     .catch(err => console.error("Error registering team:", err));
 }
 
-// 2. Update Registered Teams Table
+// 2. Update Constructors Table
 function updateTeams() {
   fetch(`${backendUrl}/get_registered_teams`)
     .then(res => res.json())
@@ -35,11 +35,12 @@ function updateTeams() {
         </tr>
       `;
       for (const [team, drivers] of Object.entries(data.teams)) {
-        // Build a vertical list of drivers
+        // Build a vertical numbered list
         let driverListHtml = "<ol style='text-align:left; margin:0; padding-left:20px;'>";
         drivers.forEach(driver => {
           driverListHtml += `
-            <li>${driver} 
+            <li>
+              ${driver}
               <button onclick="undoDraft('${team}', '${driver}')">Undo</button>
             </li>`;
         });
@@ -95,7 +96,6 @@ function populateTeamDropdowns() {
       const teams = Object.keys(data.teams);
       const selects = document.querySelectorAll("#driverTable select");
       selects.forEach(select => {
-        // reset
         select.innerHTML = `<option value="">Select Team...</option>`;
         teams.forEach(team => {
           select.innerHTML += `<option value="${team}">${team}</option>`;
@@ -113,7 +113,10 @@ function draftDriver(driverName, teamName) {
   })
     .then(res => res.json())
     .then(data => {
-      if (data.error) {
+      if (data.detail) {
+        // FastAPI error format
+        alert(data.detail);
+      } else if (data.error) {
         alert(data.error);
       } else {
         alert(data.message);
@@ -131,7 +134,9 @@ function undoDraft(teamName, driverName) {
   })
     .then(res => res.json())
     .then(data => {
-      if (data.error) {
+      if (data.detail) {
+        alert(data.detail);
+      } else if (data.error) {
         alert(data.error);
       } else {
         alert(data.message);
@@ -140,6 +145,18 @@ function undoDraft(teamName, driverName) {
       updateDrivers();
     })
     .catch(err => console.error("Error undoing draft:", err));
+}
+
+// 7. Reset Teams
+function resetTeams() {
+  fetch(`${backendUrl}/reset_teams`, { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message);
+      updateTeams();
+      updateDrivers();
+    })
+    .catch(err => console.error("Error resetting teams:", err));
 }
 
 // Initial Load
