@@ -2,7 +2,7 @@ const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
 // 1. Register a Team
 function registerTeam() {
-  const teamName = document.getElementById("teamNameInput").value;
+  const teamName = document.getElementById("teamNameInput").value.trim();
   if (!teamName) {
     alert("Please enter a team name.");
     return;
@@ -15,14 +15,14 @@ function registerTeam() {
         alert(data.error);
       } else {
         alert(data.message);
-        updateTeams();
-        updateDrivers();
       }
+      updateTeams();
+      updateDrivers();
     })
     .catch(err => console.error("Error registering team:", err));
 }
 
-// 2. Update the Registered Teams Table
+// 2. Update Registered Teams Table
 function updateTeams() {
   fetch(`${backendUrl}/get_registered_teams`)
     .then(res => res.json())
@@ -46,7 +46,7 @@ function updateTeams() {
     .catch(err => console.error("Error fetching teams:", err));
 }
 
-// 3. Update the Available Drivers Table
+// 3. Update Available Drivers Table
 function updateDrivers() {
   fetch(`${backendUrl}/get_available_drivers`)
     .then(res => res.json())
@@ -75,15 +75,15 @@ function updateDrivers() {
     .catch(err => console.error("Error fetching drivers:", err));
 }
 
-// 4. Populate the "Draft By" dropdown with existing teams
+// 4. Populate 'Draft By' Dropdown
 function populateTeamDropdowns() {
   fetch(`${backendUrl}/get_registered_teams`)
     .then(res => res.json())
     .then(data => {
       const teams = Object.keys(data.teams);
-      const selects = document.querySelectorAll("td select");
+      const selects = document.querySelectorAll("#driverTable select");
       selects.forEach(select => {
-        // Skip if it's the "Select Team..." placeholder
+        // reset
         select.innerHTML = `<option value="">Select Team...</option>`;
         teams.forEach(team => {
           select.innerHTML += `<option value="${team}">${team}</option>`;
@@ -93,10 +93,9 @@ function populateTeamDropdowns() {
     .catch(err => console.error("Error populating team dropdowns:", err));
 }
 
-// 5. Draft a Driver (Assign driver to team)
+// 5. Draft a Driver
 function draftDriver(driverName, teamName) {
-  if (!teamName) return; // User hasn't chosen a team
-
+  if (!teamName) return; // user didn't pick a team
   fetch(`${backendUrl}/draft_driver?team_name=${encodeURIComponent(teamName)}&driver_name=${encodeURIComponent(driverName)}`, {
     method: "POST"
   })
@@ -106,25 +105,27 @@ function draftDriver(driverName, teamName) {
         alert(data.error);
       } else {
         alert(data.message);
-        updateTeams();
-        updateDrivers();
       }
+      updateTeams();
+      updateDrivers();
     })
     .catch(err => console.error("Error drafting driver:", err));
 }
 
 // 6. Undo Draft (Optional)
 function undoDraft(teamName, driverName) {
-  fetch(`${backendUrl}/undo_draft?team_name=${encodeURIComponent(teamName)}&driver_name=${encodeURIComponent(driverName)}`)
+  fetch(`${backendUrl}/undo_draft?team_name=${encodeURIComponent(teamName)}&driver_name=${encodeURIComponent(driverName)}`, {
+    method: "GET"
+  })
     .then(res => res.json())
     .then(data => {
       if (data.error) {
         alert(data.error);
       } else {
         alert(data.message);
-        updateTeams();
-        updateDrivers();
       }
+      updateTeams();
+      updateDrivers();
     })
     .catch(err => console.error("Error undoing draft:", err));
 }
