@@ -1,4 +1,4 @@
-const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com/"; // Replace with actual backend URL
+const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com"; // Replace with actual backend URL
 
 function fetchTeams() {
     fetch(`${backendUrl}/teams`)
