@@ -34,7 +34,6 @@ function updateTeams() {
           <th>Drafted Drivers</th>
         </tr>
       `;
-
       for (const [team, drivers] of Object.entries(data.teams)) {
         let driverListHtml = "<ol style='text-align:left; margin:0; padding-left:20px;'>";
         drivers.forEach(driver => {
@@ -59,7 +58,7 @@ function updateTeams() {
     .catch(err => console.error("Error fetching teams:", err));
 }
 
-// Update Drivers Table (show entire list, strikethrough drafted)
+// Update Drivers Table (show entire list, strikethrough if drafted)
 function updateDrivers() {
   Promise.all([
     fetch(`${backendUrl}/get_all_drivers`).then(res => res.json()),
@@ -112,7 +111,6 @@ function populateTeamDropdowns() {
     .then(res => res.json())
     .then(data => {
       const teams = Object.keys(data.teams);
-      // Grab all <select> elements that have an onchange for draftDriver
       const selects = document.querySelectorAll("td select[onchange^='draftDriver']");
       selects.forEach(select => {
         select.innerHTML = `<option value="">Select Team...</option>`;
@@ -183,4 +181,5 @@ function resetTeams() {
 // Initial Load
 updateTeams();
 updateDrivers();
+// Populate team dropdown after a short delay
 setTimeout(populateTeamDropdowns, 300);

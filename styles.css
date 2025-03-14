@@ -33,32 +33,15 @@ h2 {
 table {
   border: 2px solid red;
   margin: 20px auto;
-  width: 80%;
+  width: 100%;
   color: white;
   border-collapse: collapse;
-  max-height: 100%;
 }
 
 th, td {
   border: 1px solid red;
   padding: 8px;
   text-align: left;
-}
-
-/* Force both tables to same fixed height, with scroll if needed */
-.left-table table,
-.right-table table {
-  height: 400px;
-  display: block;
-  overflow-y: auto;
-}
-
-/* Thead fix for scrollable table */
-.left-table table tr th,
-.right-table table tr th {
-  position: sticky;
-  top: 0;
-  background-color: black;
 }
 
 /* Layout containers */
@@ -68,12 +51,15 @@ th, td {
   margin-top: 30px;
 }
 
+/* Fix same min-height for both tables */
 .left-table,
 .right-table {
   width: 45%;
+  min-height: 500px; /* or any suitable height */
+  display: inline-block;
+  vertical-align: top;
 }
 
-/* Register & Reset sections */
 .register-section {
   margin-bottom: 20px;
 }
