@@ -1,6 +1,6 @@
 const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
-// Register a Team
+// 1. Register a Team
 function registerTeam() {
   const teamName = document.getElementById("teamNameInput").value.trim();
   if (!teamName) {
@@ -22,7 +22,7 @@ function registerTeam() {
     .catch(err => console.error("Error registering team:", err));
 }
 
-// Update Constructors Table
+// 2. Update Constructors Table
 function updateTeams() {
   fetch(`${backendUrl}/get_registered_teams`)
     .then(res => res.json())
@@ -58,7 +58,7 @@ function updateTeams() {
     .catch(err => console.error("Error fetching teams:", err));
 }
 
-// Update Drivers Table (show entire list, strikethrough if drafted)
+// 3. Update Drivers Table (show entire list, strikethrough if drafted)
 function updateDrivers() {
   Promise.all([
     fetch(`${backendUrl}/get_all_drivers`).then(res => res.json()),
@@ -122,15 +122,20 @@ function populateTeamDropdowns() {
     .catch(err => console.error("Error populating team dropdowns:", err));
 }
 
-// Draft a Driver
+// 4. Draft a Driver (POST w/ JSON Body)
 function draftDriver(driverName, teamName) {
   if (!teamName) return;
-  fetch(`${backendUrl}/draft_driver?team_name=${encodeURIComponent(teamName)}&driver_name=${encodeURIComponent(driverName)}`, {
-    method: "POST"
+  const payload = { team_name: teamName, driver_name: driverName };
+
+  fetch(`${backendUrl}/draft_driver`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   })
     .then(res => res.json())
     .then(data => {
       if (data.detail) {
+        // FastAPI error format
         alert(data.detail);
       } else if (data.error) {
         alert(data.error);
@@ -144,10 +149,14 @@ function draftDriver(driverName, teamName) {
     .catch(err => console.error("Error drafting driver:", err));
 }
 
-// Undo Draft
+// 5. Undo Draft (POST w/ JSON Body)
 function undoDraft(teamName, driverName) {
-  fetch(`${backendUrl}/undo_draft?team_name=${encodeURIComponent(teamName)}&driver_name=${encodeURIComponent(driverName)}`, {
-    method: "POST"
+  const payload = { team_name: teamName, driver_name: driverName };
+
+  fetch(`${backendUrl}/undo_draft`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   })
     .then(res => res.json())
     .then(data => {
@@ -165,9 +174,11 @@ function undoDraft(teamName, driverName) {
     .catch(err => console.error("Error undoing draft:", err));
 }
 
-// Reset Teams
+// 6. Reset Teams
 function resetTeams() {
-  fetch(`${backendUrl}/reset_teams`, { method: "POST" })
+  fetch(`${backendUrl}/reset_teams`, {
+    method: "POST"
+  })
     .then(res => res.json())
     .then(data => {
       alert(data.message);
@@ -181,5 +192,4 @@ function resetTeams() {
 // Initial Load
 updateTeams();
 updateDrivers();
-// Populate team dropdown after a short delay
 setTimeout(populateTeamDropdowns, 300);
