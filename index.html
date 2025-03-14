@@ -12,7 +12,6 @@
     <!-- Register Team -->
     <input type="text" id="teamNameInput" placeholder="Enter your team name">
     <button onclick="registerTeam()">Register Team</button>
-    <button onclick="enterDraftMode()">Enter Draft Mode</button>
 
     <!-- Registered Teams Table -->
     <h2>Registered Teams</h2>
@@ -20,6 +19,16 @@
         <tr>
             <th>Team Name</th>
             <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </table>
+    
+    <!-- Available Drivers Table -->
+    <h2>Available Drivers</h2>
+    <table id="driverTable" border="1">
+        <tr>
+            <th>Driver</th>
+            <th>Draft By</th>
         </tr>
     </table>
 
