@@ -35,10 +35,22 @@ function updateTeams() {
         </tr>
       `;
       for (const [team, drivers] of Object.entries(data.teams)) {
+        // Build a vertical list of drivers
+        let driverListHtml = "<ol style='text-align:left; margin:0; padding-left:20px;'>";
+        drivers.forEach(driver => {
+          driverListHtml += `
+            <li>${driver} 
+              <button onclick="undoDraft('${team}', '${driver}')">Undo</button>
+            </li>`;
+        });
+        driverListHtml += "</ol>";
+
+        if (!drivers.length) driverListHtml = "None";
+
         teamTable.innerHTML += `
           <tr>
             <td>${team}</td>
-            <td>${drivers.length ? drivers.join(", ") : "None"}</td>
+            <td>${driverListHtml}</td>
           </tr>
         `;
       }
@@ -112,10 +124,10 @@ function draftDriver(driverName, teamName) {
     .catch(err => console.error("Error drafting driver:", err));
 }
 
-// 6. Undo Draft (Optional)
+// 6. Undo Draft
 function undoDraft(teamName, driverName) {
   fetch(`${backendUrl}/undo_draft?team_name=${encodeURIComponent(teamName)}&driver_name=${encodeURIComponent(driverName)}`, {
-    method: "GET"
+    method: "POST"
   })
     .then(res => res.json())
     .then(data => {
