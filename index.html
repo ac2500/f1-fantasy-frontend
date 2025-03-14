@@ -8,9 +8,30 @@
 </head>
 <body>
     <h1>F1 Fantasy Draft</h1>
-    <button onclick="fetchTeams()">Load Teams</button>
 
-    <div id="teams"></div> <!-- This will now display teams dynamically -->
+    <div id="registration">
+        <input type="text" id="teamNameInput" placeholder="Enter your team name">
+        <button onclick="registerTeam()">Register Team</button>
+    </div>
+
+    <div id="draft" style="display: none;">
+        <h2>Draft</h2>
+        <select id="driverSelect"></select>
+        <button onclick="draftDriver()">Draft Driver</button>
+        <h3>Draft Status:</h3>
+        <div id="draftStatus"></div>
+    </div>
+
+    <div id="tradeSection" style="display: none;">
+        <h2>Trade Drivers</h2>
+        <input type="text" id="tradeTeam1" placeholder="Team 1">
+        <input type="text" id="tradeDriver1" placeholder="Driver 1">
+        <input type="text" id="tradeTeam2" placeholder="Team 2">
+        <input type="text" id="tradeDriver2" placeholder="Driver 2">
+        <button onclick="tradeDriver()">Trade</button>
+    </div>
+
+    <button onclick="midseasonRedraft()">Midseason Redraft</button>
 
     <script src="script.js"></script>
 </body>
