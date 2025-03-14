@@ -4,31 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>F1 Fantasy Draft</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <h1>F1 Fantasy Draft</h1>
 
-  <!-- Register Team -->
-  <div>
-    <input type="text" id="teamNameInput" placeholder="Enter team name">
+  <!-- ASCII F1 Car Logo (Green) -->
+  <pre class="ascii-car-green">
+        _
+     0=[_]=0
+       /T\
+      |(o)|
+    []=\_/=[]
+      __V__
+     '-----'
+  </pre>
+
+  <div class="register-section">
+    <input type="text" id="teamNameInput" placeholder="Enter your team name">
     <button onclick="registerTeam()">Register Team</button>
   </div>
 
-  <h2>Registered Teams</h2>
-  <table id="teamsTable" border="1">
-    <tr>
-      <th>Team Name</th>
-      <th>Drafted Drivers</th>
-    </tr>
-  </table>
+  <!-- Reset Button -->
+  <div class="reset-section">
+    <button onclick="resetTeams()">Reset Teams</button>
+  </div>
 
-  <h2>Available Drivers</h2>
-  <table id="driversTable" border="1">
-    <tr>
-      <th>Driver</th>
-      <th>Draft</th>
-    </tr>
-  </table>
+  <div class="tables-container">
+    <!-- Left Table: Constructors -->
+    <div class="left-table">
+      <h2>Constructors</h2>
+      <table id="teamTable">
+        <tr>
+          <th>Team Name</th>
+          <th>Drafted Drivers</th>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Right Table: Available Drivers -->
+    <div class="right-table">
+      <h2>Available Drivers</h2>
+      <table id="driverTable">
+        <tr>
+          <th>Driver</th>
+          <th>Draft By</th>
+        </tr>
+      </table>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

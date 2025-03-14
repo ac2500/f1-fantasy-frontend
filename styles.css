@@ -33,7 +33,7 @@ h2 {
 table {
   border: 2px solid red;
   margin: 20px auto;
-  width: 100%;
+  width: 80%;
   color: white;
   border-collapse: collapse;
 }
@@ -51,13 +51,8 @@ th, td {
   margin-top: 30px;
 }
 
-/* Fix same min-height for both tables */
-.left-table,
-.right-table {
+.left-table, .right-table {
   width: 45%;
-  min-height: 500px; /* or any suitable height */
-  display: inline-block;
-  vertical-align: top;
 }
 
 .register-section {
@@ -65,7 +60,7 @@ th, td {
 }
 
 .reset-section {
-  margin-top: 40px;
+  margin-bottom: 20px;
 }
 
 /* Buttons & Inputs */
