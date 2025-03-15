@@ -1,6 +1,6 @@
 const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
-// 1. Register a Team
+// 1. Register a Team (same as stable code)
 function registerTeam() {
   const teamName = document.getElementById("teamNameInput").value.trim();
   if (!teamName) {
@@ -34,7 +34,11 @@ function updateTeams() {
           <th>Drafted Drivers</th>
         </tr>
       `;
+      let totalTeams = 0;
+      let fullTeamsCount = 0;
+
       for (const [team, drivers] of Object.entries(data.teams)) {
+        totalTeams++;
         // Build a vertical numbered list
         let driverListHtml = "<ol style='text-align:left; margin:0; padding-left:20px;'>";
         drivers.forEach(driver => {
@@ -47,6 +51,7 @@ function updateTeams() {
         driverListHtml += "</ol>";
 
         if (!drivers.length) driverListHtml = "None";
+        if (drivers.length === 6) fullTeamsCount++;
 
         teamTable.innerHTML += `
           <tr>
@@ -54,6 +59,16 @@ function updateTeams() {
             <td>${driverListHtml}</td>
           </tr>
         `;
+      }
+
+      // Show Lock Teams button if exactly 3 teams have 6 drivers each
+      const lockBtn = document.getElementById("lockButton");
+      if (lockBtn) {
+        if (totalTeams === 3 && fullTeamsCount === 3) {
+          lockBtn.style.display = "inline-block";
+        } else {
+          lockBtn.style.display = "none";
+        }
       }
     })
     .catch(err => console.error("Error fetching teams:", err));
@@ -157,6 +172,25 @@ function resetTeams() {
       updateDrivers();
     })
     .catch(err => console.error("Error resetting teams:", err));
+}
+
+// 8. Lock Teams (New)
+function lockTeams() {
+  // Example: call /lock_teams to finalize rosters
+  fetch(`${backendUrl}/lock_teams`, { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      if (data.detail) {
+        alert(data.detail);
+      } else if (data.error) {
+        alert(data.error);
+      } else {
+        alert(data.message);
+        // If you want to redirect to a new page:
+        // window.location.href = `season.html?season_id=${data.season_id}`;
+      }
+    })
+    .catch(err => console.error("Error locking teams:", err));
 }
 
 // Initial Load

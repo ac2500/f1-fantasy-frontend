@@ -19,14 +19,16 @@
     _V_
     '-----'
 </pre>
+
   <div class="register-section">
     <input type="text" id="teamNameInput" placeholder="Enter your team name">
     <button onclick="registerTeam()">Register Team</button>
   </div>
 
-  <!-- Reset Button -->
+  <!-- Reset & Lock Buttons -->
   <div class="reset-section">
     <button onclick="resetTeams()">Reset Teams</button>
+    <button id="lockButton" style="display:none;" onclick="lockTeams()">Lock teams for 2025 season</button>
   </div>
 
   <div class="tables-container">
