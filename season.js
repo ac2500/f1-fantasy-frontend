@@ -26,25 +26,26 @@ function renderLockedTeamsTable(teams, pointsDict) {
   const table = document.getElementById("lockedTeamsTable");
   table.innerHTML = `
     <tr>
-      <th>Team Name</th>
-      <th>Drivers</th>
+      <th>Team</th>
+      <th>Driver</th>
       <th>Points</th>
     </tr>
   `;
-  for (const [team, drivers] of Object.entries(teams)) {
-    // sum driver points from pointsDict if you store them individually
-    let teamPoints = 0;
-    drivers.forEach(drv => {
-      if (pointsDict[drv]) teamPoints += pointsDict[drv];
-    });
+  // teams = { "TeamA": ["Driver1", "Driver2"], "TeamB": [...] }
+  // pointsDict = { "Driver1": 15, "Driver2": 7, ... }
 
-    table.innerHTML += `
-      <tr>
-        <td>${team}</td>
-        <td>${drivers.join(", ")}</td>
-        <td>${teamPoints}</td>
-      </tr>
-    `;
+  for (const [teamName, drivers] of Object.entries(teams)) {
+    drivers.forEach(driver => {
+      // pointsDict[driver] is the individual points for that driver
+      const driverPoints = pointsDict[driver] || 0;
+      table.innerHTML += `
+        <tr>
+          <td>${teamName}</td>
+          <td>${driver}</td>
+          <td>${driverPoints}</td>
+        </tr>
+      `;
+    });
   }
 }
 
