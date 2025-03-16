@@ -176,7 +176,6 @@ function resetTeams() {
 
 // 8. Lock Teams (New)
 function lockTeams() {
-  // Example: call /lock_teams to finalize rosters
   fetch(`${backendUrl}/lock_teams`, { method: "POST" })
     .then(res => res.json())
     .then(data => {
@@ -186,8 +185,14 @@ function lockTeams() {
         alert(data.error);
       } else {
         alert(data.message);
-        // If you want to redirect to a new page:
-        // window.location.href = `season.html?season_id=${data.season_id}`;
+
+        // If the backend returns a season_id, redirect:
+        if (data.season_id) {
+          window.location.href = `season.html?season_id=${data.season_id}`;
+        } else {
+          // Fallback if no ID is returned
+          window.location.href = "season.html";
+        }
       }
     })
     .catch(err => console.error("Error locking teams:", err));
