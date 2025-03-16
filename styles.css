@@ -81,3 +81,15 @@ button {
 button:hover {
   background-color: #cc0000;
 }
+
+/* Responsive override for narrow screens (e.g., max-width: 768px) */
+@media (max-width: 768px) {
+  .tables-container {
+    display: block;  /* stack vertically */
+  }
+  .left-table,
+  .right-table {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+}
