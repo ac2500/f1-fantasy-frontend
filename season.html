@@ -17,7 +17,7 @@
         <tr>
           <th>Team</th>
           <th>Driver</th>
-          <th>Points</th>
+          <th>Team Points</th>
         </tr>
       </table>
     </div>
@@ -42,7 +42,7 @@
     <p>From Team:
       <select id="fromTeamSelect" onchange="populateFromDrivers()"></select>
       <br>
-      <label>Drivers from that team:</label><br>
+      <label>Drivers from that team (hold Ctrl/Cmd to select multiple):</label><br>
       <select id="fromDriversSelect" multiple size="6"></select>
     </p>
 
@@ -50,16 +50,16 @@
     <p>To Team:
       <select id="toTeamSelect" onchange="populateToDrivers()"></select>
       <br>
-      <label>Drivers from that team:</label><br>
+      <label>Drivers from that team (hold Ctrl/Cmd to select multiple):</label><br>
       <select id="toDriversSelect" multiple size="6"></select>
     </p>
 
     <!-- Sweeteners -->
     <p>
-      <label>Points from From Team to To Team:</label>
+      <label>Points from 'From Team' to 'To Team':</label>
       <input type="number" id="fromSweetener" value="0">
       <br>
-      <label>Points from To Team to From Team:</label>
+      <label>Points from 'To Team' to 'From Team':</label>
       <input type="number" id="toSweetener" value="0">
     </p>
 
