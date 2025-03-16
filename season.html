@@ -42,7 +42,7 @@
     <p>From Team:
       <select id="fromTeamSelect" onchange="populateFromDrivers()"></select>
       <br>
-      <label>Drivers from that team (hold Ctrl/Cmd to select multiple):</label><br>
+      <label>Drivers from that team (Ctrl/Cmd+Click for multiple):</label><br>
       <select id="fromDriversSelect" multiple size="6"></select>
     </p>
 
@@ -50,7 +50,7 @@
     <p>To Team:
       <select id="toTeamSelect" onchange="populateToDrivers()"></select>
       <br>
-      <label>Drivers from that team (hold Ctrl/Cmd to select multiple):</label><br>
+      <label>Drivers from that team (Ctrl/Cmd+Click for multiple):</label><br>
       <select id="toDriversSelect" multiple size="6"></select>
     </p>
 
@@ -65,6 +65,11 @@
 
     <button onclick="proposeLockedTrade()">Propose Locked Trade</button>
   </div>
+
+  <hr>
+
+  <h2>Trade History</h2>
+  <ul id="tradeHistory"></ul>
 
   <script src="season.js"></script>
 </body>

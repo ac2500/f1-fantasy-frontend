@@ -3,8 +3,10 @@ const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 let currentSeasonId = null;
 let lockedTeams = {};   // {TeamA: [...], TeamB: [...]}
 let lockedPoints = {};  // {TeamA: 400, TeamB: 300}
+let tradeHistory = [];  // array of strings
+const COLOR_ARRAY = ["green", "blue", "yellow", "orange", "purple"];
+let colorMap = {};
 
-// 1. On page load, parse ?season_id
 window.onload = function() {
   const urlParams = new URLSearchParams(window.location.search);
   const seasonId = urlParams.get("season_id");
@@ -16,22 +18,35 @@ window.onload = function() {
   loadSeasonData(seasonId);
 };
 
-// 2. Load locked season data
+// 1) Load locked season data
 function loadSeasonData(seasonId) {
   fetch(`${backendUrl}/get_season?season_id=${encodeURIComponent(seasonId)}`)
     .then(res => res.json())
     .then(data => {
-      // data => { "teams": {TeamA: [...], ...}, "points": {TeamA: X, ...} }
+      // data => { teams: {TeamA: [...], ...}, points: {TeamA: X, ...}, trade_history?: [...] }
       lockedTeams = data.teams;
       lockedPoints = data.points;
+      tradeHistory = data.trade_history || [];
+      assignTeamColors(lockedTeams);
+
       renderLockedTeamsTable(lockedTeams, lockedPoints);
       renderLeaderboard(lockedTeams, lockedPoints);
+      renderTradeHistory(tradeHistory);
       populateTeamDropdowns();
     })
     .catch(err => console.error("Error loading season data:", err));
 }
 
-// 3. Render locked teams driver-by-driver
+// 2) Assign colors to each team in alphabetical order
+function assignTeamColors(teams) {
+  colorMap = {};
+  const sortedTeams = Object.keys(teams).sort();
+  sortedTeams.forEach((tName, idx) => {
+    colorMap[tName] = COLOR_ARRAY[idx] || "white";
+  });
+}
+
+// 3) Render locked teams driver-by-driver with color-coded team name
 function renderLockedTeamsTable(teams, pointsDict) {
   const table = document.getElementById("lockedTeamsTable");
   table.innerHTML = `
@@ -41,14 +56,15 @@ function renderLockedTeamsTable(teams, pointsDict) {
       <th>Team Points</th>
     </tr>
   `;
-  // each driver on its own row
+
   for (const [teamName, drivers] of Object.entries(teams)) {
     const teamPts = pointsDict[teamName] || 0;
-    // create row for each driver
+    const teamColor = colorMap[teamName] || "white";
+
     drivers.forEach(driver => {
       table.innerHTML += `
         <tr>
-          <td>${teamName}</td>
+          <td style="color:${teamColor};">${teamName}</td>
           <td>${driver}</td>
           <td>${teamPts}</td>
         </tr>
@@ -57,7 +73,7 @@ function renderLockedTeamsTable(teams, pointsDict) {
   }
 }
 
-// 4. Leaderboard by total team points
+// 4) Leaderboard by total team points
 function renderLeaderboard(teams, pointsDict) {
   const lbTable = document.getElementById("leaderboardTable");
   lbTable.innerHTML = `
@@ -76,16 +92,28 @@ function renderLeaderboard(teams, pointsDict) {
   standings.sort((a,b) => b[1] - a[1]);
 
   standings.forEach(([tName, pts]) => {
+    const teamColor = colorMap[tName] || "white";
     lbTable.innerHTML += `
       <tr>
-        <td>${tName}</td>
+        <td style="color:${teamColor};">${tName}</td>
         <td>${pts}</td>
       </tr>
     `;
   });
 }
 
-// 5. Populate the fromTeamSelect, toTeamSelect
+// 5) Render trade history
+function renderTradeHistory(historyList) {
+  const ul = document.getElementById("tradeHistory");
+  ul.innerHTML = "";
+  historyList.forEach(record => {
+    const li = document.createElement("li");
+    li.textContent = record;
+    ul.appendChild(li);
+  });
+}
+
+// 6) Populate the fromTeamSelect, toTeamSelect
 function populateTeamDropdowns() {
   const fromSelect = document.getElementById("fromTeamSelect");
   const toSelect = document.getElementById("toTeamSelect");
@@ -98,7 +126,7 @@ function populateTeamDropdowns() {
   });
 }
 
-// 6. When user picks a fromTeam, show its drivers in fromDriversSelect
+// 7) Show drivers in fromDriversSelect
 function populateFromDrivers() {
   const fromTeam = document.getElementById("fromTeamSelect").value;
   const fromDriversSelect = document.getElementById("fromDriversSelect");
@@ -114,7 +142,7 @@ function populateFromDrivers() {
   });
 }
 
-// 7. When user picks a toTeam, show its drivers in toDriversSelect
+// 8) Show drivers in toDriversSelect
 function populateToDrivers() {
   const toTeam = document.getElementById("toTeamSelect").value;
   const toDriversSelect = document.getElementById("toDriversSelect");
@@ -130,7 +158,7 @@ function populateToDrivers() {
   });
 }
 
-// 8. Propose a locked trade (two-sided sweetener)
+// 9) Propose a locked trade (two-sided sweetener)
 function proposeLockedTrade() {
   if (!currentSeasonId) {
     alert("No season_id in context!");
@@ -140,7 +168,6 @@ function proposeLockedTrade() {
   const fromTeam = document.getElementById("fromTeamSelect").value;
   const toTeam = document.getElementById("toTeamSelect").value;
 
-  // gather selected drivers
   const fromDrivers = Array.from(document.getElementById("fromDriversSelect").selectedOptions)
                            .map(opt => opt.value);
   const toDrivers = Array.from(document.getElementById("toDriversSelect").selectedOptions)
@@ -171,7 +198,10 @@ function proposeLockedTrade() {
         alert(data.error);
       } else {
         alert(data.message);
-        // refresh
+        // If the response includes updated trade_history, show it
+        if (data.trade_history) {
+          renderTradeHistory(data.trade_history);
+        }
         loadSeasonData(currentSeasonId);
       }
     })
