@@ -162,6 +162,7 @@ function resetTeams() {
 
 // 8) Lock Teams
 function lockTeams() {
+  console.log("LOCK TEAMS BUTTON CLICKED");
   fetch(`${backendUrl}/lock_teams`, { method: "POST" })
     .then(res => res.json())
     .then(data => {
