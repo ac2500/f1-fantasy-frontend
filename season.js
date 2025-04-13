@@ -1,10 +1,17 @@
 const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
+// The 2025 race list (feel free to modify or reorder)
+const RACE_LIST = [
+  "Bahrain", "Saudi Arabia", "Miami", "Imola", "Monaco", "Spain",
+  "Canada", "Austria", "UK", "Belgium", "Hungary", "Netherlands",
+  "Monza", "Azerbaijan", "Singapore", "Texas", "Mexico", "Brazil",
+  "Vegas", "Qatar", "Abu Dhabi"
+];
+
 let currentSeasonId = null;
-let lockedTeams = {};   // {TeamA: [...], TeamB: [...]}
-let lockedPoints = {};  // {TeamA: totalPoints, TeamB: totalPoints}
-let tradeHistory = [];  // array of strings
-let racePoints = {};    // Object mapping race names to per-team points, e.g. { "Bahrain GP": {TeamA: 10, TeamB: 20}, ... }
+let tradeHistory = [];   // e.g. ["On 2025-04-13, ...", ...]
+let lockedPoints = {};   // {TeamA: 100, TeamB: 80, etc.} for the LEADERBOARD
+let racePoints = {};     // { "Bahrain": { "Oscar Piastri": {points: 25, team: "Tinsley Titters"}, ...}, ... }
 const COLOR_ARRAY = ["green", "blue", "yellow", "orange", "purple"];
 let colorMap = {};
 
@@ -16,93 +23,129 @@ window.onload = function() {
     return;
   }
   currentSeasonId = seasonId;
-  loadSeasonData(seasonId);
+  loadSeasonData(currentSeasonId);
 };
 
-// 1) Load locked season data, now including race_points breakdown
+// 1) Load locked season data
 function loadSeasonData(seasonId) {
   fetch(`${backendUrl}/get_season?season_id=${encodeURIComponent(seasonId)}`)
     .then(res => res.json())
     .then(data => {
-      // Expected format: { teams: {...}, points: {...}, trade_history: [...], race_points: {...} }
-      lockedTeams = data.teams;
-      lockedPoints = data.points;
+      // We'll expect: {
+      //   teams: {...},        // optional if you want to see which drivers are on which team
+      //   points: {...},       // team-based total points
+      //   trade_history: [...],
+      //   race_points: {...}   // driver-based race breakdown
+      // }
+      lockedPoints = data.points || {};
       tradeHistory = data.trade_history || [];
       racePoints = data.race_points || {};
-      assignTeamColors(lockedTeams);
 
-      renderLockedTeamsTable(lockedTeams, lockedPoints);
-      renderLeaderboard(lockedTeams, lockedPoints);
+      // Build color mapping for teams from the lockedPoints keys plus any teams in race_points
+      const allTeams = new Set(Object.keys(lockedPoints));
+      for (const raceName in racePoints) {
+        for (const driverName in racePoints[raceName]) {
+          const t = racePoints[raceName][driverName].team;
+          allTeams.add(t);
+        }
+      }
+      assignTeamColors(Array.from(allTeams));
+
+      renderLeaderboard(lockedPoints);
+      renderDriverRaceTable(racePoints);
       renderTradeHistory(tradeHistory);
-      renderRaceBreakdown(racePoints);
-      populateTeamDropdowns();
+
+      // If you have data.teams for trades, you can store and use it in populateTeamDropdowns
+      if (data.teams) {
+        populateTeamDropdowns(data.teams);
+      }
     })
     .catch(err => console.error("Error loading season data:", err));
 }
 
-// 2) Assign colors to each team in alphabetical order
-function assignTeamColors(teams) {
+// 2) Assign colors to teams
+function assignTeamColors(teamArray) {
   colorMap = {};
-  const sortedTeams = Object.keys(teams).sort();
-  sortedTeams.forEach((tName, idx) => {
-    colorMap[tName] = COLOR_ARRAY[idx] || "white";
+  teamArray.sort(); // keep it consistent
+  teamArray.forEach((teamName, idx) => {
+    colorMap[teamName] = COLOR_ARRAY[idx] || "white";
   });
 }
 
-// 3) Render locked teams (detailed roster with team points)
-function renderLockedTeamsTable(teams, pointsDict) {
-  const table = document.getElementById("lockedTeamsTable");
-  table.innerHTML = `
-    <tr>
-      <th>Team</th>
-      <th>Driver</th>
-      <th>Team Points</th>
-    </tr>
-  `;
-  for (const [teamName, drivers] of Object.entries(teams)) {
-    const teamPts = pointsDict[teamName] || 0;
-    const teamColor = colorMap[teamName] || "white";
-    drivers.forEach(driver => {
-      table.innerHTML += `
-        <tr>
-          <td style="color:${teamColor};">${teamName}</td>
-          <td>${driver}</td>
-          <td>${teamPts}</td>
-        </tr>
-      `;
-    });
-  }
-}
-
-// 4) Render overall leaderboard by total team points
-function renderLeaderboard(teams, pointsDict) {
+// 3) Render the top leaderboard
+function renderLeaderboard(pointsDict) {
   const lbTable = document.getElementById("leaderboardTable");
+  if (!lbTable) return;
+  // Reset table header row (or keep existing).
   lbTable.innerHTML = `
     <tr>
       <th>Team</th>
       <th>Total Points</th>
     </tr>
   `;
-  let standings = [];
-  for (const [teamName, drivers] of Object.entries(teams)) {
-    const sumPts = pointsDict[teamName] || 0;
-    standings.push([teamName, sumPts]);
-  }
-  standings.sort((a, b) => b[1] - a[1]);
-  standings.forEach(([tName, pts]) => {
-    const teamColor = colorMap[tName] || "white";
+
+  // Convert pointsDict {TeamA: 50, TeamB: 70} to array for sorting
+  const sortedTeams = Object.entries(pointsDict).sort((a,b) => b[1] - a[1]);
+  sortedTeams.forEach(([teamName, pts]) => {
+    const color = colorMap[teamName] || "white";
     lbTable.innerHTML += `
       <tr>
-        <td style="color:${teamColor};">${tName}</td>
+        <td style="color:${color};">${teamName}</td>
         <td>${pts}</td>
       </tr>
     `;
   });
 }
 
+// 4) Render the wide table: driver rows, race columns
+function renderDriverRaceTable(racePointsData) {
+  const table = document.getElementById("driverRaceTable");
+  if (!table) return;
+
+  // Gather all drivers from racePoints
+  const allDriversSet = new Set();
+  for (const raceName in racePointsData) {
+    for (const driverName in racePointsData[raceName]) {
+      allDriversSet.add(driverName);
+    }
+  }
+  const allDrivers = Array.from(allDriversSet).sort();
+
+  // Build the header row: 1 col for "Driver", then columns for each race
+  let headerHtml = "<tr><th>Driver</th>";
+  RACE_LIST.forEach(r => {
+    headerHtml += `<th>${r}</th>`;
+  });
+  headerHtml += "</tr>";
+  table.innerHTML = headerHtml;
+
+  // For each driver, create a row with a cell for each race
+  allDrivers.forEach(driverName => {
+    let rowHtml = `<tr><td>${driverName}</td>`;
+    RACE_LIST.forEach(race => {
+      let cellPoints = "";
+      let cellColor = "white";
+      if (racePointsData[race] && racePointsData[race][driverName]) {
+        const info = racePointsData[race][driverName];
+        cellPoints = info.points || 0;
+        cellColor = colorMap[info.team] || "white";
+      }
+      rowHtml += `<td style="color:${cellColor};">${cellPoints}</td>`;
+    });
+    rowHtml += "</tr>";
+    table.innerHTML += rowHtml;
+  });
+
+  // If no drivers exist, show a message
+  if (allDrivers.length === 0) {
+    table.innerHTML = "<tr><td>No race data available yet.</td></tr>";
+  }
+}
+
 // 5) Render trade history
 function renderTradeHistory(historyList) {
   const ul = document.getElementById("tradeHistory");
+  if (!ul) return;
   ul.innerHTML = "";
   historyList.forEach(record => {
     const li = document.createElement("li");
@@ -111,78 +154,36 @@ function renderTradeHistory(historyList) {
   });
 }
 
-// 6) Render race-by-race breakdown table
-function renderRaceBreakdown(racePointsData) {
-  const breakdownTable = document.getElementById("raceBreakdownTable");
-  // If no race points data exists, just display a message
-  if (Object.keys(racePointsData).length === 0) {
-    breakdownTable.innerHTML = "<tr><td>No race breakdown data available yet.</td></tr>";
-    return;
-  }
-  // Build header: first column for Team name, then one column per race
-  let headerRow = "<tr><th>Team</th>";
-  const raceNames = Object.keys(racePointsData).sort();
-  raceNames.forEach(race => {
-    headerRow += `<th>${race}</th>`;
-  });
-  headerRow += "</tr>";
-  breakdownTable.innerHTML = headerRow;
-  
-  // Build a row for each team
-  Object.keys(lockedTeams).forEach(teamName => {
-    let row = `<tr><td style="color:${colorMap[teamName] || 'white'};">${teamName}</td>`;
-    raceNames.forEach(race => {
-      // Expect racePointsData[race] to be an object: { TeamName: points, ... }
-      const teamRacePoints = racePointsData[race][teamName] || 0;
-      // You can include more styling here if needed
-      row += `<td style="color:${colorMap[teamName] || 'white'};">${teamRacePoints}</td>`;
-    });
-    row += "</tr>";
-    breakdownTable.innerHTML += row;
-  });
-}
-
-// 7) Populate team dropdowns for trading
-function populateTeamDropdowns() {
+// 6) Populate trade dropdowns
+function populateTeamDropdowns(teamsData) {
   const fromSelect = document.getElementById("fromTeamSelect");
   const toSelect = document.getElementById("toTeamSelect");
+  if (!fromSelect || !toSelect) return;
+
   fromSelect.innerHTML = "<option value=''>Select Team</option>";
   toSelect.innerHTML = "<option value=''>Select Team</option>";
-  Object.keys(lockedTeams).forEach(teamName => {
-    fromSelect.innerHTML += `<option value="${teamName}">${teamName}</option>`;
-    toSelect.innerHTML += `<option value="${teamName}">${teamName}</option>`;
+  Object.keys(teamsData).forEach(team => {
+    fromSelect.innerHTML += `<option value="${team}">${team}</option>`;
+    toSelect.innerHTML += `<option value="${team}">${team}</option>`;
   });
 }
 
-// 8) Populate drivers for the "from" team
+// 7) Show drivers in fromDriversSelect
 function populateFromDrivers() {
-  const fromTeam = document.getElementById("fromTeamSelect").value;
+  // If needed, fetch data from lockedTeams. For now, we’ll just show a placeholder, since locked is locked.
   const fromDriversSelect = document.getElementById("fromDriversSelect");
-  fromDriversSelect.innerHTML = "";
-  if (!fromTeam || !lockedTeams[fromTeam]) return;
-  lockedTeams[fromTeam].forEach(drv => {
-    const option = document.createElement("option");
-    option.value = drv;
-    option.textContent = drv;
-    fromDriversSelect.appendChild(option);
-  });
+  if (!fromDriversSelect) return;
+  fromDriversSelect.innerHTML = "<option>Locked - no data</option>";
 }
 
-// 9) Populate drivers for the "to" team
+// 8) Show drivers in toDriversSelect
 function populateToDrivers() {
-  const toTeam = document.getElementById("toTeamSelect").value;
   const toDriversSelect = document.getElementById("toDriversSelect");
-  toDriversSelect.innerHTML = "";
-  if (!toTeam || !lockedTeams[toTeam]) return;
-  lockedTeams[toTeam].forEach(drv => {
-    const option = document.createElement("option");
-    option.value = drv;
-    option.textContent = drv;
-    toDriversSelect.appendChild(option);
-  });
+  if (!toDriversSelect) return;
+  toDriversSelect.innerHTML = "<option>Locked - no data</option>";
 }
 
-// 10) Propose a locked trade (with two-sided sweetener)
+// 9) Propose a locked trade
 function proposeLockedTrade() {
   if (!currentSeasonId) {
     alert("No season_id in context!");
@@ -190,10 +191,11 @@ function proposeLockedTrade() {
   }
   const fromTeam = document.getElementById("fromTeamSelect").value;
   const toTeam = document.getElementById("toTeamSelect").value;
-  const fromDrivers = Array.from(document.getElementById("fromDriversSelect").selectedOptions).map(opt => opt.value);
-  const toDrivers = Array.from(document.getElementById("toDriversSelect").selectedOptions).map(opt => opt.value);
+  const fromDrivers = Array.from(document.getElementById("fromDriversSelect").selectedOptions).map(o => o.value);
+  const toDrivers = Array.from(document.getElementById("toDriversSelect").selectedOptions).map(o => o.value);
   const fromSweetener = parseInt(document.getElementById("fromSweetener").value || "0", 10);
   const toSweetener = parseInt(document.getElementById("toSweetener").value || "0", 10);
+
   const payload = {
     from_team: fromTeam,
     to_team: toTeam,
@@ -202,6 +204,7 @@ function proposeLockedTrade() {
     from_team_points: fromSweetener,
     to_team_points: toSweetener
   };
+
   fetch(`${backendUrl}/trade_locked?season_id=${encodeURIComponent(currentSeasonId)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -209,10 +212,8 @@ function proposeLockedTrade() {
   })
     .then(res => res.json())
     .then(data => {
-      if (data.detail) {
-        alert(data.detail);
-      } else if (data.error) {
-        alert(data.error);
+      if (data.error || data.detail) {
+        alert(data.error || data.detail);
       } else {
         alert(data.message);
         if (data.trade_history) {
@@ -224,17 +225,14 @@ function proposeLockedTrade() {
     .catch(err => console.error("Error proposing locked trade:", err));
 }
 
-// 11) NEW: Refresh Race Points function – automatically uses "latest"
+// 10) Refresh Race Points automatically with "latest"
 function refreshRacePoints() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const season_id = urlParams.get("season_id");
-  if (!season_id) {
-    alert("Season ID is missing.");
+  if (!currentSeasonId) {
+    alert("No season_id in context!");
     return;
   }
-  // Automatically use "latest" as the race_id
-  const race_id = "latest";
-  fetch(`${backendUrl}/update_race_points?season_id=${encodeURIComponent(season_id)}&race_id=${encodeURIComponent(race_id)}`, {
+  const race_id = "latest"; // no prompt
+  fetch(`${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}&race_id=${encodeURIComponent(race_id)}`, {
     method: "POST"
   })
     .then(res => res.json())
@@ -243,12 +241,8 @@ function refreshRacePoints() {
         alert(data.error || data.detail);
       } else {
         alert(data.message);
-        loadSeasonData(season_id);
+        loadSeasonData(currentSeasonId);
       }
     })
-    .catch(err => console.error("Error updating race points:", err));
+    .catch(err => console.error("Error refreshing race points:", err));
 }
-
-// Initial load
-updateTeams();
-updateDrivers();
