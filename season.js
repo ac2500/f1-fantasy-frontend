@@ -2,8 +2,9 @@ const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
 let currentSeasonId = null;
 let lockedTeams = {};   // {TeamA: [...], TeamB: [...]}
-let lockedPoints = {};  // {TeamA: 400, TeamB: 300}
+let lockedPoints = {};  // {TeamA: totalPoints, TeamB: totalPoints}
 let tradeHistory = [];  // array of strings
+let racePoints = {};    // Object mapping race names to per-team points, e.g. { "Bahrain GP": {TeamA: 10, TeamB: 20}, ... }
 const COLOR_ARRAY = ["green", "blue", "yellow", "orange", "purple"];
 let colorMap = {};
 
@@ -18,20 +19,22 @@ window.onload = function() {
   loadSeasonData(seasonId);
 };
 
-// 1) Load locked season data
+// 1) Load locked season data, now including race_points breakdown
 function loadSeasonData(seasonId) {
   fetch(`${backendUrl}/get_season?season_id=${encodeURIComponent(seasonId)}`)
     .then(res => res.json())
     .then(data => {
-      // Expected data format: { teams: {TeamA: [...], ...}, points: {TeamA: X, ...}, trade_history?: [...] }
+      // Expected format: { teams: {...}, points: {...}, trade_history: [...], race_points: {...} }
       lockedTeams = data.teams;
       lockedPoints = data.points;
       tradeHistory = data.trade_history || [];
+      racePoints = data.race_points || {};
       assignTeamColors(lockedTeams);
 
       renderLockedTeamsTable(lockedTeams, lockedPoints);
       renderLeaderboard(lockedTeams, lockedPoints);
       renderTradeHistory(tradeHistory);
+      renderRaceBreakdown(racePoints);
       populateTeamDropdowns();
     })
     .catch(err => console.error("Error loading season data:", err));
@@ -46,7 +49,7 @@ function assignTeamColors(teams) {
   });
 }
 
-// 3) Render locked teams driver-by-driver with color-coded team name
+// 3) Render locked teams (detailed roster with team points)
 function renderLockedTeamsTable(teams, pointsDict) {
   const table = document.getElementById("lockedTeamsTable");
   table.innerHTML = `
@@ -71,7 +74,7 @@ function renderLockedTeamsTable(teams, pointsDict) {
   }
 }
 
-// 4) Render leaderboard by total team points
+// 4) Render overall leaderboard by total team points
 function renderLeaderboard(teams, pointsDict) {
   const lbTable = document.getElementById("leaderboardTable");
   lbTable.innerHTML = `
@@ -85,7 +88,6 @@ function renderLeaderboard(teams, pointsDict) {
     const sumPts = pointsDict[teamName] || 0;
     standings.push([teamName, sumPts]);
   }
-  // Sort descending by points
   standings.sort((a, b) => b[1] - a[1]);
   standings.forEach(([tName, pts]) => {
     const teamColor = colorMap[tName] || "white";
@@ -109,7 +111,38 @@ function renderTradeHistory(historyList) {
   });
 }
 
-// 6) Populate the team dropdowns for trading
+// 6) Render race-by-race breakdown table
+function renderRaceBreakdown(racePointsData) {
+  const breakdownTable = document.getElementById("raceBreakdownTable");
+  // If no race points data exists, just display a message
+  if (Object.keys(racePointsData).length === 0) {
+    breakdownTable.innerHTML = "<tr><td>No race breakdown data available yet.</td></tr>";
+    return;
+  }
+  // Build header: first column for Team name, then one column per race
+  let headerRow = "<tr><th>Team</th>";
+  const raceNames = Object.keys(racePointsData).sort();
+  raceNames.forEach(race => {
+    headerRow += `<th>${race}</th>`;
+  });
+  headerRow += "</tr>";
+  breakdownTable.innerHTML = headerRow;
+  
+  // Build a row for each team
+  Object.keys(lockedTeams).forEach(teamName => {
+    let row = `<tr><td style="color:${colorMap[teamName] || 'white'};">${teamName}</td>`;
+    raceNames.forEach(race => {
+      // Expect racePointsData[race] to be an object: { TeamName: points, ... }
+      const teamRacePoints = racePointsData[race][teamName] || 0;
+      // You can include more styling here if needed
+      row += `<td style="color:${colorMap[teamName] || 'white'};">${teamRacePoints}</td>`;
+    });
+    row += "</tr>";
+    breakdownTable.innerHTML += row;
+  });
+}
+
+// 7) Populate team dropdowns for trading
 function populateTeamDropdowns() {
   const fromSelect = document.getElementById("fromTeamSelect");
   const toSelect = document.getElementById("toTeamSelect");
@@ -121,7 +154,7 @@ function populateTeamDropdowns() {
   });
 }
 
-// 7) Populate drivers for the "from" team
+// 8) Populate drivers for the "from" team
 function populateFromDrivers() {
   const fromTeam = document.getElementById("fromTeamSelect").value;
   const fromDriversSelect = document.getElementById("fromDriversSelect");
@@ -135,7 +168,7 @@ function populateFromDrivers() {
   });
 }
 
-// 8) Populate drivers for the "to" team
+// 9) Populate drivers for the "to" team
 function populateToDrivers() {
   const toTeam = document.getElementById("toTeamSelect").value;
   const toDriversSelect = document.getElementById("toDriversSelect");
@@ -149,7 +182,7 @@ function populateToDrivers() {
   });
 }
 
-// 9) Propose a locked trade (with two-sided sweetener)
+// 10) Propose a locked trade (with two-sided sweetener)
 function proposeLockedTrade() {
   if (!currentSeasonId) {
     alert("No season_id in context!");
@@ -191,15 +224,16 @@ function proposeLockedTrade() {
     .catch(err => console.error("Error proposing locked trade:", err));
 }
 
-// 10) NEW: Refresh Race Points function – manually updates team points from a race
+// 11) NEW: Refresh Race Points function – automatically uses "latest"
 function refreshRacePoints() {
   const urlParams = new URLSearchParams(window.location.search);
   const season_id = urlParams.get("season_id");
-  const race_id = prompt("Enter the Race ID to update (e.g., 'latest' or a specific race identifier):");
-  if (!season_id || !race_id) {
-    alert("Season ID or Race ID is missing.");
+  if (!season_id) {
+    alert("Season ID is missing.");
     return;
   }
+  // Automatically use "latest" as the race_id
+  const race_id = "latest";
   fetch(`${backendUrl}/update_race_points?season_id=${encodeURIComponent(season_id)}&race_id=${encodeURIComponent(race_id)}`, {
     method: "POST"
   })
@@ -214,3 +248,7 @@ function refreshRacePoints() {
     })
     .catch(err => console.error("Error updating race points:", err));
 }
+
+// Initial load
+updateTeams();
+updateDrivers();
