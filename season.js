@@ -84,7 +84,7 @@ function renderLeaderboard(pointsDict) {
   if (!lbTable) return;
   lbTable.innerHTML = `
     <tr>
-      <th>Team</th>
+      <th>Fantasy Team</th>
       <th>Total Points</th>
     </tr>
   `;
