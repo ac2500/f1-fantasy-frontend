@@ -275,19 +275,20 @@ function renderLockedTeamsSimple(teams) {
   const table = document.getElementById("lockedTeamsSimpleTable");
   if (!table) return;
   
-  // Create header row (team names)
+  // Create header row with team names
   let headerRow = "<tr>";
-  // Create a row for the drivers
+  // Create drivers row that will list the driver's last names
   let driversRow = "<tr>";
   
-  // Sort the team names so they appear in consistent order.
+  // Sort the team names for consistency
   Object.keys(teams).sort().forEach(teamName => {
-    // Use the color from colorMap for the team name
     const teamColor = colorMap[teamName] || "white";
     headerRow += `<th style="color:${teamColor};">${teamName}</th>`;
   
-    // Join the driver's names with a line break.
-    const driversHtml = teams[teamName].join("<br>");
+    // For each driver in the team's roster, extract the last name and join with <br>
+    const driversHtml = teams[teamName]
+      .map(driver => driver.split(" ").pop())
+      .join("<br>");
     driversRow += `<td>${driversHtml}</td>`;
   });
   headerRow += "</tr>";
