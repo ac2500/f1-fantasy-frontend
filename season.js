@@ -7,7 +7,7 @@ const RACE_LIST = [
   "Monza", "Azerbaijan", "Singapore", "Texas", "Mexico", "Brazil",
   "Vegas", "Qatar", "Abu Dhabi"
 ];
-
+let lockedTeams = {};
 let currentSeasonId = null;
 let tradeHistory = [];   // Example: ["On 2025-04-13, ...", ...]
 let lockedPoints = {};   // Overall team totals: {TeamA: number, TeamB: number, ...}
