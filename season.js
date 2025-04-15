@@ -31,33 +31,27 @@ function loadSeasonData(seasonId) {
   fetch(`${backendUrl}/get_season?season_id=${encodeURIComponent(seasonId)}`)
     .then(res => res.json())
     .then(data => {
-      // Expected data format:
-      // {
-      //   teams: {...},      // e.g., { "TeamA": ["Driver1", "Driver2", ...], "TeamB": [...] }
-      //   points: {...},     // e.g., { "TeamA": 50, "TeamB": 30 }
-      //   trade_history: [...],
-      //   race_points: {...} // e.g., { "Bahrain": { "Driver1": {points: 25, team: "TeamX"}, ... }, ... }
-      // }
+      lockedTeams = data.teams || {};
       lockedPoints = data.points || {};
       tradeHistory = data.trade_history || [];
       racePoints = data.race_points || {};
-      // Build the color map from both lockedPoints keys and any teams from race_points.
+
+      // Build the color map from lockedPoints, lockedTeams, and racePoints
       const allTeams = new Set(Object.keys(lockedPoints));
-      if (data.teams) {
-        Object.keys(data.teams).forEach(team => allTeams.add(team));
-      }
-      // Also from racePoints data:
+      Object.keys(lockedTeams).forEach(team => allTeams.add(team));
       for (const race in racePoints) {
         for (const driver in racePoints[race]) {
-          const team = racePoints[race][driver].team;
-          if(team) allTeams.add(team);
+          const t = racePoints[race][driver].team;
+          if (t) allTeams.add(t);
         }
       }
       assignTeamColors(Array.from(allTeams));
 
       // Render the top leaderboard
       renderLeaderboard(lockedPoints);
-      // Render the wide race-by-race breakdown table
+      // NEW: Render the "Lineups" table below the leaderboard.
+      renderLockedTeamsSimple(lockedTeams);
+      // Render the race-by-race breakdown table
       renderDriverRaceTable(racePoints);
       // Render trade history
       renderTradeHistory(tradeHistory);
@@ -275,4 +269,34 @@ function refreshRacePoints() {
       }
     })
     .catch(err => console.error("Error refreshing race points:", err));
+}
+
+function renderLockedTeamsSimple(teams) {
+  // Get the table element where the "Lineups" will be rendered.
+  const table = document.getElementById("lockedTeamsSimpleTable");
+  if (!table) return; // Exit if the element isn’t found.
+
+  // Build the header row
+  table.innerHTML = `
+    <tr>
+      <th>Fantasy Team</th>
+      <th>Lineup</th>
+    </tr>
+  `;
+
+  // Iterate over each team in the teams object.
+  // 'teams' is expected to be an object with team names as keys and an array of drivers as values.
+  Object.keys(teams).forEach(teamName => {
+    // Create a comma-separated list of drivers for that team.
+    const driverList = teams[teamName].join(", ");
+    // Retrieve the team’s color from the global colorMap (if defined)
+    const teamColor = colorMap[teamName] || "white";
+    // Append a row for this team.
+    table.innerHTML += `
+      <tr>
+        <td style="color:${teamColor};">${teamName}</td>
+        <td>${driverList}</td>
+      </tr>
+    `;
+  });
 }
