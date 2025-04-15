@@ -272,31 +272,26 @@ function refreshRacePoints() {
 }
 
 function renderLockedTeamsSimple(teams) {
-  // Get the table element where the "Lineups" will be rendered.
   const table = document.getElementById("lockedTeamsSimpleTable");
-  if (!table) return; // Exit if the element isn’t found.
-
-  // Build the header row
-  table.innerHTML = `
-    <tr>
-      <th>Fantasy Team</th>
-      <th>Lineup</th>
-    </tr>
-  `;
-
-  // Iterate over each team in the teams object.
-  // 'teams' is expected to be an object with team names as keys and an array of drivers as values.
-  Object.keys(teams).forEach(teamName => {
-    // Create a comma-separated list of drivers for that team.
-    const driverList = teams[teamName].join(", ");
-    // Retrieve the team’s color from the global colorMap (if defined)
+  if (!table) return;
+  
+  // Create header row (team names)
+  let headerRow = "<tr>";
+  // Create a row for the drivers
+  let driversRow = "<tr>";
+  
+  // Sort the team names so they appear in consistent order.
+  Object.keys(teams).sort().forEach(teamName => {
+    // Use the color from colorMap for the team name
     const teamColor = colorMap[teamName] || "white";
-    // Append a row for this team.
-    table.innerHTML += `
-      <tr>
-        <td style="color:${teamColor};">${teamName}</td>
-        <td>${driverList}</td>
-      </tr>
-    `;
+    headerRow += `<th style="color:${teamColor};">${teamName}</th>`;
+  
+    // Join the driver's names with a line break.
+    const driversHtml = teams[teamName].join("<br>");
+    driversRow += `<td>${driversHtml}</td>`;
   });
+  headerRow += "</tr>";
+  driversRow += "</tr>";
+  
+  table.innerHTML = headerRow + driversRow;
 }
