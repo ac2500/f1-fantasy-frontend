@@ -105,14 +105,13 @@ function renderDriverRaceTable(racePointsData) {
   const table = document.getElementById("driverRaceTable");
   if (!table) return;
   
-  // Gather all drivers from lockedTeams (draft data)
+  // Gather all drivers from lockedTeams and from racePoints
   const allDriversSet = new Set();
   if (lockedTeams) {
     for (const team in lockedTeams) {
       lockedTeams[team].forEach(driver => allDriversSet.add(driver));
     }
   }
-  // Also include drivers mentioned in racePointsData (if any)
   for (const race in racePointsData) {
     for (const driver in racePointsData[race]) {
       allDriversSet.add(driver);
@@ -120,7 +119,7 @@ function renderDriverRaceTable(racePointsData) {
   }
   const allDrivers = Array.from(allDriversSet).sort();
 
-  // Build header: first column "Driver", then one column per race in RACE_LIST
+  // Build the header row: "Driver" + each race in RACE_LIST
   let headerHtml = "<tr><th>Driver</th>";
   RACE_LIST.forEach(race => {
     headerHtml += `<th>${race}</th>`;
@@ -128,27 +127,51 @@ function renderDriverRaceTable(racePointsData) {
   headerHtml += "</tr>";
   table.innerHTML = headerHtml;
 
-  // Build table rows: one for each driver. If no race data for a cell, leave blank.
+  // BUILD TABLE ROWS
   allDrivers.forEach(driverName => {
     let rowHtml = `<tr><td>${driverName}</td>`;
+
     RACE_LIST.forEach(race => {
-      let cellPoints = "";  // default: empty cell
+      let cellPoints = "";
       let cellColor = "white";
+
+      // Check if the backend stored data for this driver & race
       if (racePointsData[race] && racePointsData[race][driverName]) {
+        // This driver has data for this race
         const info = racePointsData[race][driverName];
-        cellPoints = info.points || "";
+        cellPoints = (info.points !== undefined) ? info.points : "0";
         cellColor = colorMap[info.team] || "white";
+
+      } else {
+        // No data for this driver in this race => show "0" in the driver's current team color
+        const currentTeam = findCurrentTeamOfDriver(driverName);
+        if (currentTeam) {
+          cellColor = colorMap[currentTeam] || "white";
+        }
+        cellPoints = "0";  // Show zero
       }
+
       rowHtml += `<td style="color:${cellColor};">${cellPoints}</td>`;
     });
+
     rowHtml += "</tr>";
     table.innerHTML += rowHtml;
   });
-  
-  // If there are no drivers, show a message.
+
+  // If no drivers exist, show a fallback message
   if (allDrivers.length === 0) {
     table.innerHTML = `<tr><td colspan="${RACE_LIST.length + 1}">No drafted drivers found.</td></tr>`;
   }
+}
+
+// HELPER: Find which team (if any) a driver is currently on
+function findCurrentTeamOfDriver(driverName) {
+  for (const [teamName, driverArr] of Object.entries(lockedTeams)) {
+    if (driverArr.includes(driverName)) {
+      return teamName;
+    }
+  }
+  return null;
 }
 
 // 5) Render trade history
