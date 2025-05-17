@@ -134,15 +134,25 @@ function renderTradeHistory() {
   });
 }
 
-// --- 6) Team dropdowns for trading ---
-function populateTeamDropdowns() {
+// 6) Populate trade dropdowns (for proposing trades),
+ // including a “Free Agency” entry in the To-Team select
+ function populateTeamDropdowns(teamsData) {
   const from = document.getElementById("fromTeamSelect");
   const to   = document.getElementById("toTeamSelect");
-  from.innerHTML = to.innerHTML = `<option value="">Select…</option>`;
-  Object.keys(lockedTeams).forEach(t=>{
-    from.innerHTML += `<option value="${t}">${t}</option>`;
-    to.innerHTML   += `<option value="${t}">${t}</option>`;
+  if (!from || !to) return;
+
+  // reset
+  from.innerHTML = `<option value="">Select …</option>`;
+  to  .innerHTML = `<option value="">Select …</option>`;
+
+  // add each locked fantasy team
+  Object.keys(teamsData).forEach(team => {
+    from.innerHTML += `<option value="${team}">${team}</option>`;
+    to  .innerHTML += `<option value="${team}">${team}</option>`;
   });
+
+  // add the free-agency slot in the "To" dropdown only
+  to.innerHTML += `<option value="__FREE_AGENCY__">Free Agency</option>`;
 }
 
 // --- 7/8) Placeholder driver selects (locked teams) ---
@@ -155,12 +165,31 @@ function populateFromDrivers() {
   });
 }
 function populateToDrivers() {
-  const sel=document.getElementById("toDriversSelect");
-  const team=document.getElementById("toTeamSelect").value;
-  sel.innerHTML="";
-  (lockedTeams[team]||[]).forEach(d=>{
-    sel.innerHTML += `<option>${d}</option>`;
-  });
+  const toTeam = document.getElementById("toTeamSelect").value;
+  const toDriversSelect = document.getElementById("toDriversSelect");
+  toDriversSelect.innerHTML = "";
+
+  if (toTeam === "__FREE_AGENCY__") {
+    // load only the undrafted/free agents
+    fetch(`${backendUrl}/get_available_drivers?season_id=${season_id}`)
+      .then(r => r.json())
+      .then(d => {
+        d.drivers.forEach(driver => {
+          const opt = document.createElement("option");
+          opt.value = driver;
+          opt.textContent = driver;
+          toDriversSelect.appendChild(opt);
+        });
+      });
+  } else if (lockedTeams[toTeam]) {
+    // existing logic: list that team's current roster
+    lockedTeams[toTeam].forEach(drv => {
+      const opt = document.createElement("option");
+      opt.value = drv;
+      opt.textContent = drv;
+      toDriversSelect.appendChild(opt);
+    });
+  }
 }
 
 // --- 9) Propose locked trade ---
