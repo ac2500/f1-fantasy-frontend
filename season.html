@@ -9,81 +9,71 @@
 <body>
   <h1>F1 Fantasy Season 2025 (Locked)</h1>
 
-  <!-- Leaderboard at the top -->
+  <!-- Leaderboard -->
   <h2>Leaderboard</h2>
   <div class="leaderboard-container">
-    <table id="leaderboardTable" style="width: auto; margin: auto;">
-      <tr>
-        <th>Fantasy Team</th>
-        <th>Total Points</th>
-      </tr>
+    <table id="leaderboardTable" style="width:auto; margin:auto;">
+      <tr><th>Fantasy Team</th><th>Total Points</th></tr>
     </table>
   </div>
-
   <hr/>
 
-  <!-- Current Rosters / Lineups -->
+  <!-- Lineups -->
   <h2>Lineups</h2>
-  <div class="locked-teams-container">
-    <table id="lockedTeamsSimpleTable" style="width:auto; margin:auto;">
+  <div class="lineups-container">
+    <table id="lineupsTable" style="width:auto; margin:auto;">
       <!-- Populated by season.js -->
     </table>
   </div>
-
   <hr/>
 
   <!-- Race-by-Race Breakdown -->
-  <h2>Race Points</h2>
+  <h2>Constructors (Locked) - Race-by-Race Breakdown</h2>
   <div class="race-table-container">
     <table id="driverRaceTable">
       <!-- Populated by season.js -->
     </table>
   </div>
-
   <hr/>
 
-  <!-- Available Free Agents -->
+  <!-- Trade Section -->
+  <h2>Propose Trade</h2>
+  <div id="tradeSection">
+    <p>
+      From Team:
+      <select id="fromTeamSelect" onchange="populateFromDrivers()"></select><br>
+      <label>Drivers (Ctrl/Cmd+Click for multiple):</label><br>
+      <select id="fromDriversSelect" multiple size="6" style="width:auto;"></select>
+    </p>
+    <p>
+      To Team:
+      <select id="toTeamSelect" onchange="populateToDrivers()"></select><br>
+      <label>Drivers (Ctrl/Cmd+Click for multiple):</label><br>
+      <select id="toDriversSelect" multiple size="6" style="width:auto;"></select>
+    </p>
+    <p>
+      <label>Sweetener from From→To:</label>
+      <input type="number" id="fromSweetener" value="0" style="width:4em;"><br>
+      <label>Sweetener from To→From:</label>
+      <input type="number" id="toSweetener" value="0" style="width:4em;">
+    </p>
+    <button onclick="proposeLockedTrade()">Propose Locked Trade</button>
+  </div>
+  <hr/>
+
+  <!-- Trade History -->
+  <h2>Trade History</h2>
+  <ul id="tradeHistory"></ul>
+  <hr/>
+
+  <!-- Free Agents -->
   <h2>Available Free Agents</h2>
   <ul id="undraftedList" style="list-style:none; padding:0; margin:0 auto; text-align:left; width:auto;">
     <!-- Populated by season.js -->
   </ul>
-
   <hr/>
 
-  <!-- Trade / Free Agency -->
-  <h2>Trade / Free Agency</h2>
-  <div id="tradeSection">
-    <p>From Team:
-      <select id="fromTeamSelect" onchange="populateFromDrivers()"></select><br>
-      <label>Drivers to drop:</label><br>
-      <select id="fromDriversSelect" multiple size="6"></select>
-    </p>
-
-    <p>To Team:
-      <select id="toTeamSelect" onchange="populateToDrivers()"></select><br>
-      <label>Drivers to add:</label><br>
-      <select id="toDriversSelect" multiple size="6"></select>
-    </p>
-
-    <p>
-      <label>Points from 'From Team' to 'To Team':</label>
-      <input type="number" id="fromSweetener" value="0"><br>
-      <label>Points from 'To Team' to 'From Team':</label>
-      <input type="number" id="toSweetener" value="0">
-    </p>
-
-    <button onclick="proposeLockedTrade()">Confirm Trade</button>
-  </div>
-
-  <hr/>
-
-  <!-- Trade History -->
-  <h2>Trade / Free Agency History</h2>
-  <ul id="tradeHistory"></ul>
-
-  <hr/>
-
-  <!-- Refresh Race Points -->
+  <!-- Refresh -->
   <button onclick="refreshRacePoints()">Refresh Race Points</button>
 
   <script src="season.js"></script>
