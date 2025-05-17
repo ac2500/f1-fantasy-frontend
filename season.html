@@ -12,7 +12,7 @@
   <!-- Leaderboard at the top -->
   <h2>Leaderboard</h2>
   <div class="leaderboard-container">
-    <table id="leaderboardTable" style="width:auto; margin:0 auto;">
+    <table id="leaderboardTable" style="width:auto; margin:auto;">
       <tr>
         <th>Fantasy Team</th>
         <th>Total Points</th>
@@ -22,24 +22,11 @@
 
   <hr/>
 
-  <!-- Lineups -->
+  <!-- Current Lineups -->
   <h2>Lineups</h2>
-  <div class="lineups-container">
-    <table id="lineupsTable" style="width:auto; margin:0 auto;">
-      <thead>
-        <tr id="lineupsHeader"></tr>
-      </thead>
-      <tbody id="lineupsBody"></tbody>
-    </table>
-  </div>
-
-  <hr/>
-
-  <!-- Race Points Breakdown -->
-  <h2>Race Points</h2>
-  <div class="race-table-container">
-    <table id="driverRaceTable">
-      <!-- Populated by season.js -->
+  <div class="locked-teams-container">
+    <table id="lockedTeamsSimpleTable" style="width:auto; margin:auto;">
+      <tr><th>Team</th><th>Drivers</th></tr>
     </table>
   </div>
 
@@ -60,33 +47,41 @@
 
   <hr/>
 
-  <!-- Propose Trade -->
+  <!-- Wide table for detailed breakdown -->
+  <h2>Race Points</h2>
+  <div class="race-table-container">
+    <table id="driverRaceTable">
+      <!-- Populated by season.js -->
+    </table>
+  </div>
+
+  <hr/>
+
   <h2>Propose Trade</h2>
   <div id="tradeSection">
-    <p>
-      From Team:
+    <!-- from_team -->
+    <p>From Team:
       <select id="fromTeamSelect" onchange="populateFromDrivers()"></select>
     </p>
-    <p>
-      Drivers (Ctrl/Cmd+Click for multiple):<br>
+    <p>Drivers (Ctrl/Cmd+Click for multiple):<br>
       <select id="fromDriversSelect" multiple size="6"></select>
     </p>
-    <p>
-      To Team:
+
+    <!-- to_team -->
+    <p>To Team:
       <select id="toTeamSelect" onchange="populateToDrivers()"></select>
     </p>
-    <p>
-      Drivers (Ctrl/Cmd+Click for multiple):<br>
+    <p>Drivers (Ctrl/Cmd+Click for multiple):<br>
       <select id="toDriversSelect" multiple size="6"></select>
     </p>
+
+    <!-- Sweeteners -->
     <p>
-      Sweeteners:<br>
-      <label>Points from 'From' to 'To':</label>
-      <input type="number" id="fromSweetener" value="0"><br>
-      <label>Points from 'To' to 'From':</label>
-      <input type="number" id="toSweetener" value="0">
+      Points from 'From' to 'To': <input type="number" id="fromSweetener" value="0"><br>
+      Points from 'To' to 'From': <input type="number" id="toSweetener" value="0">
     </p>
-    <button onclick="proposeLockedTrade()">Propose Trade</button>
+
+    <button onclick="proposeLockedTrade()">Propose Locked Trade</button>
   </div>
 
   <hr/>
@@ -95,7 +90,6 @@
   <ul id="tradeHistory"></ul>
 
   <hr/>
-
   <button onclick="refreshRacePoints()">Refresh Race Points</button>
 
   <script src="season.js"></script>
