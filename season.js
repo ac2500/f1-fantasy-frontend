@@ -46,7 +46,7 @@ function loadSeasonData() {
 }
 
 function fetchFreeAgents() {
-  fetch(`${backendUrl}/get_available_drivers`)
+  fetch(`${backendUrl}/get_available_drivers?season_id=${encodeURIComponent(currentSeasonId)}`)
     .then(r=>r.json())
     .then(data => {
       freeAgents = data.drivers || [];
