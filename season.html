@@ -25,9 +25,14 @@
   <h2>Lineups</h2>
   <div class="locked-teams-container">
     <table id="lockedTeamsSimpleTable" style="width: auto; margin: auto;">
-      <!-- This table will be populated by renderLockedTeamsSimple() -->
+      <!-- Populated by renderLockedTeamsSimple() -->
     </table>
   </div>
+
+  <hr/>
+
+  <h2>Available Free Agents</h2>
+  <ul id="undraftedList" style="list-style: none; padding: 0; margin: 0 auto; width: auto;"></ul>
 
   <hr/>
 
@@ -43,26 +48,20 @@
 
   <h2>Propose Trade</h2>
   <div id="tradeSection">
-    <!-- from_team -->
     <p>From Team:
-      <select id="fromTeamSelect" onchange="populateFromDrivers()"></select>
-      <br>
-      <label>Drivers from that team (Ctrl/Cmd+Click for multiple):</label><br>
+      <select id="fromTeamSelect" onchange="populateFromDrivers()"></select><br>
+      <label>Drivers from that team:</label><br>
       <select id="fromDriversSelect" multiple size="6"></select>
     </p>
-    <!-- to_team -->
     <p>To Team:
-      <select id="toTeamSelect" onchange="populateToDrivers()"></select>
-      <br>
-      <label>Drivers from that team (Ctrl/Cmd+Click for multiple):</label><br>
+      <select id="toTeamSelect" onchange="populateToDrivers()"></select><br>
+      <label>Drivers from that team:</label><br>
       <select id="toDriversSelect" multiple size="6"></select>
     </p>
-    <!-- Sweeteners -->
     <p>
-      <label>Points from 'From Team' to 'To Team':</label>
-      <input type="number" id="fromSweetener" value="0">
-      <br>
-      <label>Points from 'To Team' to 'From Team':</label>
+      <label>Points from 'From' → 'To':</label>
+      <input type="number" id="fromSweetener" value="0"><br>
+      <label>Points from 'To' → 'From':</label>
       <input type="number" id="toSweetener" value="0">
     </p>
     <button onclick="proposeLockedTrade()">Propose Locked Trade</button>
@@ -76,8 +75,6 @@
   <hr/>
 
   <button onclick="refreshRacePoints()">Refresh Race Points</button>
-
-  
 
   <script src="season.js"></script>
 </body>
