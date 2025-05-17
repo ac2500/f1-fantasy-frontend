@@ -32,7 +32,7 @@
 
   <hr/>
 
-  <!-- Wide table for detailed breakdown -->
+  <!-- Race-by-Race Breakdown -->
   <h2>Race Points</h2>
   <div class="race-table-container">
     <table id="driverRaceTable">
@@ -50,29 +50,24 @@
 
   <hr/>
 
+  <!-- Trade / Free Agency -->
   <h2>Trade / Free Agency</h2>
   <div id="tradeSection">
-    <!-- from_team -->
     <p>From Team:
-      <select id="fromTeamSelect" onchange="populateFromDrivers()"></select>
-      <br>
+      <select id="fromTeamSelect" onchange="populateFromDrivers()"></select><br>
       <label>Drivers to drop:</label><br>
       <select id="fromDriversSelect" multiple size="6"></select>
     </p>
 
-    <!-- to_team -->
     <p>To Team:
-      <select id="toTeamSelect" onchange="populateToDrivers()"></select>
-      <br>
+      <select id="toTeamSelect" onchange="populateToDrivers()"></select><br>
       <label>Drivers to add:</label><br>
       <select id="toDriversSelect" multiple size="6"></select>
     </p>
 
-    <!-- Sweeteners -->
     <p>
       <label>Points from 'From Team' to 'To Team':</label>
-      <input type="number" id="fromSweetener" value="0">
-      <br>
+      <input type="number" id="fromSweetener" value="0"><br>
       <label>Points from 'To Team' to 'From Team':</label>
       <input type="number" id="toSweetener" value="0">
     </p>
@@ -82,11 +77,13 @@
 
   <hr/>
 
+  <!-- Trade History -->
   <h2>Trade / Free Agency History</h2>
   <ul id="tradeHistory"></ul>
 
   <hr/>
 
+  <!-- Refresh Race Points -->
   <button onclick="refreshRacePoints()">Refresh Race Points</button>
 
   <script src="season.js"></script>
