@@ -93,23 +93,3 @@ button:hover {
     margin-bottom: 20px;
   }
 }
-
-/* Free-agents table styling */
-.free-agents-container {
-  width: auto;
-  margin: 0 auto 20px;
-}
-
-#freeAgentsTable {
-  border: 2px solid red;
-  border-collapse: collapse;
-  text-align: left;
-  margin: 10px auto;
-  width: auto;
-}
-
-#freeAgentsTable th,
-#freeAgentsTable td {
-  border: 1px solid red;
-  padding: 6px 12px;
-}
