@@ -66,20 +66,14 @@
   <ul id="tradeHistory"></ul>
   <hr/>
 
-<!-- Available Free Agents -->
-<h2>Available Free Agents</h2>
-<div class="free-agents-container">
-  <table id="freeAgentsTable">
-    <thead>
-      <tr><th>Driver</th></tr>
-    </thead>
-    <tbody id="freeAgentsBody">
-      <!-- season.js will fill this -->
-    </tbody>
-  </table>
-</div>
-
-<hr/>
+  <!-- Free Agents -->
+  <h2>Available Free Agents</h2>
+  <ul id="undraftedList"
+      class="free-agents-container"
+      style="list-style:none; padding:0; margin:0 auto; text-align:left; width:auto;">
+    <!-- Populated by season.js -->
+  </ul>
+  <hr/>
 
   <!-- Refresh Race Points -->
   <button onclick="refreshRacePoints()">Refresh Race Points</button>

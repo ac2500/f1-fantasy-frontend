@@ -1,6 +1,8 @@
-const backendUrl = "https://api.jolpi.ca";  // <— your correct API
+// season.js
 
-// 2025 race list
+const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
+
+// Races in order
 const RACE_LIST = [
   "Bahrain","Saudi Arabia","Miami","Imola","Monaco","Spain",
   "Canada","Austria","UK","Belgium","Hungary","Netherlands",
@@ -9,225 +11,237 @@ const RACE_LIST = [
 ];
 
 let currentSeasonId = null;
-let teams = {};          // { teamName: [driver1, driver2, …] }
-let lockedPoints = {};   // { teamName: totalPoints }
-let racePoints = {};     // { raceName: { driverName: {points, team} } }
-let tradeHistory = [];   // [ "On … teamA traded …", … ]
-let freeAgents = [];     // [ "Colapinto", "Doohan", "Bortoleto" ]
+let lockedTeams = {};    // { teamName: [driver1,driver2,…], … }
+let lockedPoints = {};   // { teamName: totalPoints, … }
+let racePoints = {};     // { raceName: { driverName: {points,team} }, … }
+let tradeHistory = [];   // [ "On YYYY-MM-DD …", … ]
+let freeAgents = [];     // [ driverName, … ]
 
 const COLOR_ARRAY = ["green","blue","yellow","orange","purple"];
-let colorMap = {};
+let colorMap = {};       // { teamName: color, … }
 
 window.onload = () => {
   const params = new URLSearchParams(window.location.search);
-  const seasonId = params.get("season_id");
-  if (!seasonId) { alert("No season_id!"); return; }
-  currentSeasonId = seasonId;
-  loadSeasonData(seasonId);
+  const sid = params.get("season_id");
+  if (!sid) {
+    alert("No season_id provided!");
+    return;
+  }
+  currentSeasonId = sid;
+  loadSeasonData(sid);
 };
 
-// 1) Load locked-season snapshot + then free agents
+// 1) Load the locked‐season snapshot
 function loadSeasonData(seasonId) {
   fetch(`${backendUrl}/get_season?season_id=${encodeURIComponent(seasonId)}`)
     .then(r => r.json())
     .then(data => {
-      teams        = data.teams;
-      lockedPoints = data.points;
-      tradeHistory = data.trade_history;
-      racePoints   = data.race_points;
+      lockedTeams   = data.teams     || {};
+      lockedPoints  = data.points    || {};
+      tradeHistory  = data.trade_history || [];
+      racePoints    = data.race_points   || {};
 
-      assignTeamColors(Object.keys(teams));
-      renderLeaderboard();
-      renderLineups();
-      renderDriverRaceTable();
-      renderTradeHistory();
+      // Assign a color to each team (alphabetical)
+      assignTeamColors(Object.keys(lockedTeams));
 
-      populateTeamDropdowns();
+      // Render everything
+      renderLeaderboard(lockedPoints);
+      renderLineups(lockedTeams);
+      renderDriverRaceTable(racePoints);
+      renderTradeHistory(tradeHistory);
+      populateTeamDropdowns(lockedTeams);
 
-      // now fetch free agents against locked rosters
+      // Now fetch free agents *against* that locked roster
       fetch(`${backendUrl}/get_available_drivers?season_id=${encodeURIComponent(seasonId)}`)
         .then(r => r.json())
         .then(d => {
-          freeAgents = d.drivers;
-          renderFreeAgentsTable();
-          populateToTeamDropdowns();  // include “Free Agency”
+          freeAgents = d.drivers || [];
+          renderFreeAgents();
         })
         .catch(console.error);
     })
     .catch(console.error);
 }
 
-// 2) Assign colors
-function assignTeamColors(teamNames) {
+// 2) Assign team colors
+function assignTeamColors(teams) {
+  teams.sort();
   colorMap = {};
-  teamNames.sort().forEach((t,i) => colorMap[t] = COLOR_ARRAY[i] || "white");
+  teams.forEach((t,i) => colorMap[t] = COLOR_ARRAY[i] || "white");
 }
 
 // 3) Leaderboard
-function renderLeaderboard() {
-  const tbl = document.getElementById("leaderboardTable");
-  tbl.innerHTML = "<tr><th>Fantasy Team</th><th>Total Points</th></tr>";
-  Object.entries(lockedPoints)
-    .sort((a,b)=>b[1]-a[1])
-    .forEach(([team,pts])=>{
-      const tr = document.createElement("tr");
-      const tdTeam = document.createElement("td");
-      tdTeam.textContent = team;
-      tdTeam.style.color = colorMap[team];
-      const tdPts = document.createElement("td");
-      tdPts.textContent = pts;
-      tr.append(tdTeam, tdPts);
-      tbl.appendChild(tr);
-    });
+function renderLeaderboard(pointsDict) {
+  const tb = document.getElementById("leaderboardTable");
+  if (!tb) return;
+  tb.innerHTML = `<tr><th>Fantasy Team</th><th>Total Points</th></tr>`;
+  Object.entries(pointsDict)
+        .sort((a,b) => b[1]-a[1])
+        .forEach(([team,pts]) => {
+    const c = colorMap[team] || "white";
+    tb.innerHTML += `
+      <tr>
+        <td style="color:${c};">${team}</td>
+        <td>${pts}</td>
+      </tr>`;
+  });
 }
 
-// 4) Lineups chart
-function renderLineups() {
+// 4) Lineups
+function renderLineups(teams) {
   const tbl = document.getElementById("lineupsTable");
-  tbl.innerHTML = "";
-  // header
-  const header = document.createElement("tr");
-  Object.keys(teams).forEach(team => {
-    const th = document.createElement("th");
-    th.textContent = team;
-    th.style.color = colorMap[team];
-    header.appendChild(th);
-  });
-  tbl.appendChild(header);
-  // rows
-  const maxLen = Math.max(...Object.values(teams).map(a=>a.length));
-  for (let i=0; i<maxLen; i++) {
-    const tr = document.createElement("tr");
-    Object.values(teams).forEach(roster => {
-      const td = document.createElement("td");
-      if (roster[i]) td.textContent = roster[i].split(" ").slice(-1)[0];
-      tr.appendChild(td);
-    });
-    tbl.appendChild(tr);
+  if (!tbl) return;
+  const names = Object.keys(teams).sort();
+  // Header
+  let html = "<tr>" + names.map(t=>`<th style="color:${colorMap[t]};">${t}</th>`).join("") + "</tr>";
+  // Rows (max roster size)
+  const max = Math.max(...names.map(t=>teams[t].length));
+  for (let i=0; i<max; i++) {
+    html += "<tr>" + names.map(t=>{
+      const drv = teams[t][i];
+      // show last name only
+      const last = drv? drv.split(" ").slice(-1)[0] : "";
+      return `<td>${last}</td>`;
+    }).join("") + "</tr>";
   }
+  tbl.innerHTML = html;
 }
 
-// 5) Race-by-race breakdown
-function renderDriverRaceTable() {
+// 5) Race-by-Race Breakdown
+function renderDriverRaceTable(data) {
   const tbl = document.getElementById("driverRaceTable");
-  tbl.innerHTML = "";
-  // header
-  const hdr = document.createElement("tr");
-  hdr.innerHTML = "<th>Driver</th>" + RACE_LIST.map(r=>`<th>${r}</th>`).join("");
-  tbl.appendChild(hdr);
-  // drivers
-  const allDrivers = Array.from(new Set([
-    ...[].concat(...Object.values(teams)),
-    ...Object.keys(racePoints)
-  ])).sort();
-  allDrivers.forEach(driver => {
-    const tr = document.createElement("tr");
-    const tdName = document.createElement("td");
-    tdName.textContent = driver.split(" ").slice(-1)[0];
-    tr.appendChild(tdName);
-    RACE_LIST.forEach(race => {
-      const td = document.createElement("td");
-      if (racePoints[race] && racePoints[race][driver]) {
-        const info = racePoints[race][driver];
-        td.textContent = info.points;
-        td.style.color = colorMap[info.team];
-      }
-      tr.appendChild(td);
+  if (!tbl) return;
+
+  // Drivers set
+  const drvSet = new Set();
+  Object.values(lockedTeams).forEach(arr => arr.forEach(d=>drvSet.add(d)));
+  Object.values(data).forEach(raceMap =>
+    Object.keys(raceMap).forEach(d=>drvSet.add(d))
+  );
+  const drivers = Array.from(drvSet).sort();
+
+  // Header
+  let hdr = "<tr><th>Driver</th>";
+  RACE_LIST.forEach(r=> hdr += `<th>${r}</th>`);
+  hdr += "</tr>";
+
+  // Rows
+  let rows = drivers.map(d=>{
+    let r = `<tr><td>${d.split(" ").slice(-1)[0]}</td>`;
+    RACE_LIST.forEach(race=>{
+      const rec = data[race] && data[race][d];
+      const pts = rec? rec.points : 0;
+      const col = rec? colorMap[rec.team] : "white";
+      r += `<td style="color:${col};">${pts||0}</td>`;
     });
-    tbl.appendChild(tr);
-  });
+    return r + "</tr>";
+  }).join("");
+
+  tbl.innerHTML = hdr + rows;
 }
 
-// 6) Trade history
-function renderTradeHistory() {
+// 6) Trade History
+function renderTradeHistory(hist) {
   const ul = document.getElementById("tradeHistory");
+  if (!ul) return;
   ul.innerHTML = "";
-  tradeHistory.forEach(entry => {
+  hist.forEach(txt => {
     const li = document.createElement("li");
-    li.textContent = entry;
+    li.textContent = txt;
     ul.appendChild(li);
   });
 }
 
-// 7) Populate From‐team dropdown
-function populateTeamDropdowns() {
+// 7) Team dropdowns
+function populateTeamDropdowns(teams) {
   const from = document.getElementById("fromTeamSelect");
-  from.innerHTML = `<option value="">Select…</option>` +
-    Object.keys(teams).map(t=>`<option value="${t}">${t}</option>`).join("");
-  // same for “To” initially; will inject Free Agency next
-  document.getElementById("toTeamSelect").innerHTML = from.innerHTML;
+  const to   = document.getElementById("toTeamSelect");
+  if (!from || !to) return;
+
+  from.innerHTML = `<option value="">Select…</option>`;
+  to.innerHTML   = `<option value="">Select…</option>`;
+
+  Object.keys(teams).forEach(t => {
+    from.innerHTML += `<option value="${t}">${t}</option>`;
+    to  .innerHTML += `<option value="${t}">${t}</option>`;
+  });
+  // add Free Agency last
+  if (freeAgents.length) {
+    to.innerHTML += `<option value="Free Agency">Free Agency</option>`;
+  }
 }
 
-// 8) After freeAgents loads, re‐populate To‐team w/ Free Agency
-function populateToTeamDropdowns() {
-  const to = document.getElementById("toTeamSelect");
-  to.innerHTML = `<option value="">Select…</option>
-    <option value="__FREE_AGENCY__">Free Agency</option>` +
-    Object.keys(teams).map(t=>`<option value="${t}">${t}</option>`).join("");
-}
-
-// 9) Populate “From Drivers” list
+// 8) Drivers lists for trade selects
 function populateFromDrivers() {
   const sel = document.getElementById("fromDriversSelect");
-  sel.innerHTML = "";
   const team = document.getElementById("fromTeamSelect").value;
-  (teams[team]||[]).forEach(d => {
-    const o = document.createElement("option");
-    o.value = d;
-    o.textContent = d.split(" ").slice(-1)[0];
-    sel.appendChild(o);
-  });
-}
-
-// 10) Populate “To Drivers” list (or Free Agents)
-function populateToDrivers() {
-  const sel = document.getElementById("toDriversSelect");
   sel.innerHTML = "";
-  const team = document.getElementById("toTeamSelect").value;
-  if (team === "__FREE_AGENCY__") {
-    freeAgents.forEach(d => {
+  if (lockedTeams[team]) {
+    lockedTeams[team].forEach(d => {
       const o = document.createElement("option");
-      o.value = d;
-      o.textContent = d.split(" ").slice(-1)[0];
+      o.value = d; o.textContent = d.split(" ").slice(-1)[0];
       sel.appendChild(o);
     });
-  } else {
-    (teams[team]||[]).forEach(d => {
+  }
+}
+function populateToDrivers() {
+  const sel = document.getElementById("toDriversSelect");
+  const team = document.getElementById("toTeamSelect").value;
+  sel.innerHTML = "";
+
+  if (team === "Free Agency") {
+    freeAgents.forEach(d => {
       const o = document.createElement("option");
-      o.value = d;
-      o.textContent = d.split(" ").slice(-1)[0];
+      o.value = d; o.textContent = d;
+      sel.appendChild(o);
+    });
+  } else if (lockedTeams[team]) {
+    lockedTeams[team].forEach(d => {
+      const o = document.createElement("option");
+      o.value = d; o.textContent = d.split(" ").slice(-1)[0];
       sel.appendChild(o);
     });
   }
 }
 
-// 11) Propose Locked Trade
+// 9) Propose Trade (unchanged)
 async function proposeLockedTrade() {
   if (!currentSeasonId) return alert("No season_id!");
-  const from = document.getElementById("fromTeamSelect").value;
-  const to   = document.getElementById("toTeamSelect").value;
-  const driversFrom = Array.from(document.getElementById("fromDriversSelect").selectedOptions).map(o=>o.value);
-  const driversTo   = Array.from(document.getElementById("toDriversSelect").selectedOptions).map(o=>o.value);
-  const fromPts = parseInt(document.getElementById("fromSweetener").value||0,10);
-  const toPts   = parseInt(document.getElementById("toSweetener").value||0,10);
-  const payload = { from_team:from, to_team:to, drivers_from_team:driversFrom, drivers_to_team:driversTo, from_team_points:fromPts, to_team_points:toPts };
+  const fromTeam = document.getElementById("fromTeamSelect").value;
+  const toTeam   = document.getElementById("toTeamSelect").value;
+  const fromDrivers = Array.from(
+    document.getElementById("fromDriversSelect").selectedOptions
+  ).map(o => o.value);
+  const toDrivers = Array.from(
+    document.getElementById("toDriversSelect").selectedOptions
+  ).map(o => o.value);
+  const fromPts = parseInt(document.getElementById("fromSweetener").value)||0;
+  const toPts   = parseInt(document.getElementById("toSweetener").value)||0;
+
+  const payload = {
+    from_team: fromTeam,
+    to_team: toTeam,
+    drivers_from_team: fromDrivers,
+    drivers_to_team: toDrivers,
+    from_team_points: fromPts,
+    to_team_points: toPts
+  };
+
   try {
     const res = await fetch(
       `${backendUrl}/trade_locked?season_id=${encodeURIComponent(currentSeasonId)}`,
-      { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) }
+      { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) }
     );
-    const json = await res.json();
-    if (res.status!==200) throw new Error(json.detail||json.error);
-    alert(json.message);
-    tradeHistory = json.trade_history;
-    renderTradeHistory();
+    const data = await res.json();
+    if (res.status !== 200) throw new Error(data.detail||data.error);
+    alert(data.message);
     loadSeasonData(currentSeasonId);
   } catch(e) {
     alert(e);
   }
 }
 
-// 12) Refresh Race Points
+// 10) Refresh Race Points (unchanged)
 async function refreshRacePoints() {
   if (!currentSeasonId) return alert("No season_id!");
   try {
@@ -235,24 +249,18 @@ async function refreshRacePoints() {
       `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}&race_id=latest`,
       { method:"POST" }
     );
-    const json = await res.json();
-    if (res.status!==200) throw new Error(json.detail||json.error);
-    alert(json.message);
+    const j = await res.json();
+    if (res.status !== 200) throw new Error(j.detail||j.error);
+    alert(j.message);
     loadSeasonData(currentSeasonId);
   } catch(e) {
     alert(e);
   }
 }
 
-// 13) Render Free Agents table
-function renderFreeAgentsTable() {
-  const tbody = document.getElementById("freeAgentsBody");
-  tbody.innerHTML = "";
-  freeAgents.forEach(d => {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.textContent = d.split(" ").slice(-1)[0];
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-  });
+// 11) Render Free Agents into the <ul>
+function renderFreeAgents() {
+  const ul = document.getElementById("undraftedList");
+  if (!ul) return;
+  ul.innerHTML = freeAgents.map(d => `<li>${d}</li>`).join("");
 }
