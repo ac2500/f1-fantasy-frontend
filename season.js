@@ -4,10 +4,10 @@ async function refreshRacePoints() {
     return alert("No season_id in context!");
   }
 
-  // Determine next race number: highest processed + 1, or start at 1
+  // Determine next race number: highest processed + 1, or start at 4
   const nextRace = processedRaces.length > 0
     ? Math.max(...processedRaces.map(r => parseInt(r, 10))) + 1
-    : 1;
+    : 4;
 
   try {
     const res = await fetch(
