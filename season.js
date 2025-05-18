@@ -1,6 +1,6 @@
 // season.js
 
-const backendUrl = "https://api.jolpi.ca";  // your actual backend
+const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 const RACE_LIST = [
   "Bahrain","Saudi Arabia","Miami","Imola","Monaco","Spain",
   "Canada","Austria","UK","Belgium","Hungary","Netherlands",
