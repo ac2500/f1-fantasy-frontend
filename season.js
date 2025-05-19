@@ -236,12 +236,12 @@ async function refreshRacePoints() {
   }
 
   // parse and filter out any non-numeric entries, then pick the next one
-  const numericRounds = processedRaces
-    .map(r => parseInt(r, 10))
-    .filter(n => !isNaN(n));
-  const nextRace = numericRounds.length
-    ? Math.max(...numericRounds) + 1
-    : 4;  // default to 4 if nothing processed yet
+  const numeric = processedRaces
+    .map(r => parseInt(r,10))
+    .filter(n => Number.isInteger(n));
+  const nextRace = numeric.length
+    ? Math.max(...numeric) + 1
+    : 4;
 
   try {
     const res = await fetch(
