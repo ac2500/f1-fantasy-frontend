@@ -28,7 +28,7 @@
   <hr/>
 
   <!-- Race-by-Race Breakdown -->
-  <h2>Constructors (Locked) - Race-by-Race Breakdown</h2>
+  <h2>Constructors (Locked) – Race-by-Race Breakdown</h2>
   <div class="race-table-container">
     <table id="driverRaceTable">
       <!-- Populated by season.js -->
@@ -36,7 +36,7 @@
   </div>
   <hr/>
 
-  <!-- Trade Section -->
+  <!-- Propose Trade -->
   <h2>Propose Trade</h2>
   <div id="tradeSection">
     <p>
@@ -52,9 +52,9 @@
       <select id="toDriversSelect" multiple size="6" style="width:auto;"></select>
     </p>
     <p>
-      <label>Sweetener from From→To:</label>
+      <label>Sweetener From → To:</label>
       <input type="number" id="fromSweetener" value="0" style="width:4em;"><br>
-      <label>Sweetener from To→From:</label>
+      <label>Sweetener To → From:</label>
       <input type="number" id="toSweetener" value="0" style="width:4em;">
     </p>
     <button onclick="proposeLockedTrade()">Propose Locked Trade</button>
@@ -66,11 +66,9 @@
   <ul id="tradeHistory"></ul>
   <hr/>
 
-  <!-- Free Agents -->
+  <!-- Available Free Agents -->
   <h2>Available Free Agents</h2>
-  <ul id="undraftedList"
-      class="free-agents-container"
-      style="list-style:none; padding:0; margin:0 auto; text-align:left; width:auto;">
+  <ul id="undraftedList" style="list-style:none; padding:0; margin:0 auto; text-align:left; width:auto;">
     <!-- Populated by season.js -->
   </ul>
   <hr/>
