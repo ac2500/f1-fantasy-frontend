@@ -1,5 +1,5 @@
 // season.js (full file)
-const backendUrl = "https://api.jolpi.ca";
+const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
 let currentSeasonId = null;
 let lockedTeams     = {};
