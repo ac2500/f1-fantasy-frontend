@@ -229,42 +229,39 @@ async function proposeLockedTrade() {
   }
 }
 
-// 11) Refresh Race Points (next unprocessed round)
+// 11) Refresh Race Points – smartly pick the next round and re-render everything
 async function refreshRacePoints() {
   if (!currentSeasonId) {
     return alert("No season_id in context!");
   }
 
-  // compute next round:
-  const nextRace = processedRaces.length > 0
-    ? Math.max(...processedRaces.map(r => parseInt(r, 10))) + 1
-    : 4;
+  // parse and filter out any non-numeric entries, then pick the next one
+  const numericRounds = processedRaces
+    .map(r => parseInt(r, 10))
+    .filter(n => !isNaN(n));
+  const nextRace = numericRounds.length
+    ? Math.max(...numericRounds) + 1
+    : 4;  // default to 4 if nothing processed yet
 
   try {
     const res = await fetch(
-      `${backendUrl}/update_race_points?` +
-        `season_id=${encodeURIComponent(currentSeasonId)}` +
-        `&race_id=${encodeURIComponent(nextRace)}`,
+      `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}` +
+      `&race_id=${encodeURIComponent(nextRace)}`,
       { method: "POST" }
     );
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || json.error);
 
-    // update our in-memory processedRaces and points map:
-    processedRaces = json.processed_races || processedRaces;
-    lockedPoints   = json.points          || lockedPoints;
-
     alert(json.message);
 
-    // now re-load *all* of the season’s data from scratch,
-    // which will re-populate lockedTeams, racePoints, etc.
+    // reload ALL the season data (this will update processedRaces, lockedPoints, racePoints, etc.)
     await loadSeasonData(currentSeasonId);
 
-    // and finally re-render the race-by-race table:
+    // now that racePoints is fresh, re-draw the per-race table
     renderDriverRaceTable(racePoints);
   } catch (err) {
-    // if the only problem is “already processed” or no new races:
-    if (err.message.includes("already been processed")) {
+    // if we tried to fetch a round that doesn't exist or is already processed:
+    if (err.message.includes("already been processed") || err.message.includes("Error fetching race data")) {
       return alert("No new races to update points.");
     }
     alert(err.message || err);
