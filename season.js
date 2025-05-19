@@ -7,6 +7,31 @@ const RACE_LIST = [
   "Canada","Austria","UK","Belgium","Hungary","Netherlands",
   "Monza","Azerbaijan","Singapore","Texas","Mexico","Brazil",
   "Vegas","Qatar","Abu Dhabi"
+
+  // map human race names → Ergast round numbers
+const ROUND_MAP = {
+  "Bahrain":        4,
+  "Saudi Arabia":   5,
+  "Miami":          6,
+  "Imola":          7,
+  "Monaco":         8,
+  "Spain":          9,
+  "Canada":        10,
+  "Austria":       11,
+  "UK":            12,
+  "Belgium":       13,
+  "Hungary":       14,
+  "Netherlands":   15,
+  "Monza":         16,
+  "Azerbaijan":    17,
+  "Singapore":     18,
+  "Texas":         19,
+  "Mexico":        20,
+  "Brazil":        21,
+  "Vegas":         22,
+  "Qatar":         23,
+  "Abu Dhabi":     24
+};
 ];
 
 let currentSeasonId = null;
@@ -116,28 +141,41 @@ function renderLineups() {
 // 4) Race-by-race table
 function renderDriverRaceTable() {
   const tbl = document.getElementById("driverRaceTable");
+
+  // header row
   let html = "<tr><th>Driver</th>";
-  RACE_LIST.forEach(r => html += `<th>${r}</th>`);
+  RACE_LIST.forEach(raceName => {
+    html += `<th>${raceName}</th>`;
+  });
   html += "</tr>";
 
+  // gather every driver ever drafted or in racePoints
   const drivers = new Set();
-  Object.values(lockedTeams).flat().forEach(d=>drivers.add(d));
-  Object.values(racePoints).forEach(rp => Object.keys(rp).forEach(d=>drivers.add(d)));
+  Object.values(lockedTeams).flat().forEach(d => drivers.add(d));
+  Object.values(racePoints).forEach(rp => Object.keys(rp).forEach(d => drivers.add(d)));
 
-  Array.from(drivers).sort().forEach(d => {
-    html += `<tr><td>${d}</td>`;
-    RACE_LIST.forEach(r => {
-      const info = (racePoints[r]||{})[d];
-      const pts  = info?.points ?? "";
-      const col  = info?.team ? (colorMap[info.team]||"white") : "white";
-      html += `<td style="color:${col}">${pts}</td>`;
+  // one row per driver
+  Array.from(drivers).sort().forEach(driverName => {
+    html += `<tr><td>${driverName}</td>`;
+
+    RACE_LIST.forEach(raceName => {
+      // convert the human label to the Ergast round number
+      const roundNum = ROUND_MAP[raceName];
+      // pull that map of { driverName: {points, team} }
+      const info     = (racePoints[String(roundNum)] || {})[driverName];
+      const pts      = info?.points ?? "";
+      const col      = info?.team ? (colorMap[info.team] || "white") : "white";
+      html         += `<td style="color:${col}">${pts}</td>`;
     });
+
     html += "</tr>";
   });
 
-  if (drivers.size===0) {
-    html = `<tr><td colspan="${RACE_LIST.length+1}">No drafted drivers.</td></tr>`;
+  // if no drivers at all
+  if (drivers.size === 0) {
+    html = `<tr><td colspan="${RACE_LIST.length + 1}">No drafted drivers found.</td></tr>`;
   }
+
   tbl.innerHTML = html;
 }
 
