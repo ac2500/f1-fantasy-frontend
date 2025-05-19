@@ -229,37 +229,44 @@ async function proposeLockedTrade() {
   }
 }
 
-// 10) Refresh Race Points – pick the next numeric round
+// 11) Refresh Race Points (next unprocessed round)
 async function refreshRacePoints() {
-  if (!currentSeasonId) return alert("No season_id in context!");
-
-  // turn ["4","5","Imola","6"] into [4,5,6]
-  const numeric = processedRaces
-    .map(r => parseInt(r, 10))
-    .filter(n => !isNaN(n));
-
-  // if we have seen rounds, next = max+1, else start at 4
-  const nextRace = numeric.length > 0
-    ? Math.max(...numeric) + 1
-    : 4;
-
-  // if they’ve already processed all known rounds...
-  if (nextRace > RACE_LIST.length) {
-    return alert("No new races to update points.");
+  if (!currentSeasonId) {
+    return alert("No season_id in context!");
   }
+
+  // compute next round:
+  const nextRace = processedRaces.length > 0
+    ? Math.max(...processedRaces.map(r => parseInt(r, 10))) + 1
+    : 4;
 
   try {
     const res = await fetch(
       `${backendUrl}/update_race_points?` +
-      `season_id=${encodeURIComponent(currentSeasonId)}` +
-      `&race_id=${encodeURIComponent(nextRace)}`,
+        `season_id=${encodeURIComponent(currentSeasonId)}` +
+        `&race_id=${encodeURIComponent(nextRace)}`,
       { method: "POST" }
     );
-    const j = await res.json();
-    if (!res.ok) throw new Error(j.detail || j.error);
-    alert(j.message);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || json.error);
+
+    // update our in-memory processedRaces and points map:
+    processedRaces = json.processed_races || processedRaces;
+    lockedPoints   = json.points          || lockedPoints;
+
+    alert(json.message);
+
+    // now re-load *all* of the season’s data from scratch,
+    // which will re-populate lockedTeams, racePoints, etc.
     await loadSeasonData(currentSeasonId);
+
+    // and finally re-render the race-by-race table:
+    renderDriverRaceTable(racePoints);
   } catch (err) {
+    // if the only problem is “already processed” or no new races:
+    if (err.message.includes("already been processed")) {
+      return alert("No new races to update points.");
+    }
     alert(err.message || err);
   }
 }
