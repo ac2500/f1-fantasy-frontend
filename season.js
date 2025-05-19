@@ -1,6 +1,6 @@
-const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
+// season.js
 
-// Static list of 2025 rounds
+const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 const RACE_LIST = [
   "Bahrain","Saudi Arabia","Miami","Imola","Monaco","Spain",
   "Canada","Austria","UK","Belgium","Hungary","Netherlands",
@@ -9,241 +9,239 @@ const RACE_LIST = [
 ];
 
 let currentSeasonId = null;
-let freeAgents = [];
-let processedRaces = [];
-let lockedTeams = {};
-let lockedPoints = {};
-let tradeHistory = [];
-let racePoints = {};
+let lockedTeams = {};     // { teamName: [driver1, …] }
+let lockedPoints = {};    // { teamName: totalPoints }
+let racePoints = {};      // { raceName: { driverName: { points, team } } }
+let tradeHistory = [];    // [ "On 2025-05-01, …", … ]
+let freeAgents = [];      // undrafted for this locked season
+
 const COLOR_ARRAY = ["green","blue","yellow","orange","purple"];
 let colorMap = {};
 
-// On load: first fetch locked season data, then load free agents against that roster
-window.onload = async () => {
+window.onload = () => {
   const params = new URLSearchParams(window.location.search);
   const sid = params.get("season_id");
-  if (!sid) {
-    alert("No season_id provided!");
-    return;
-  }
+  if (!sid) return alert("No season_id provided!");
   currentSeasonId = sid;
-  await loadSeasonData(sid);
-  loadFreeAgents();
+  loadSeasonData(sid);
 };
 
-// Load locked season details
+// 1) Load everything for this locked season
 async function loadSeasonData(seasonId) {
   try {
     const res = await fetch(`${backendUrl}/get_season?season_id=${encodeURIComponent(seasonId)}`);
+    if (!res.ok) throw new Error("Season load failed");
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || data.error);
 
-    lockedTeams    = data.teams      || {};
-    lockedPoints   = data.points     || {};
-    tradeHistory   = data.trade_history || [];
-    racePoints     = data.race_points   || {};
-    processedRaces = data.processed_races || [];
+    lockedTeams = data.teams || {};
+    lockedPoints = data.points || {};
+    tradeHistory = data.trade_history || [];
+    racePoints   = data.race_points || {};
 
-    assignTeamColors(Object.keys(lockedTeams));
-    renderLeaderboard(lockedPoints);
-    renderLineups(lockedTeams);
-    renderDriverRaceTable(racePoints);
-    renderTradeHistory(tradeHistory);
-    populateTeamDropdowns(lockedTeams);
-  } catch (err) {
-    console.error(err);
-    alert(err.message || err);
+    // build color map
+    const allTeams = Object.keys(lockedTeams);
+    allTeams.sort();
+    allTeams.forEach((t,i) => colorMap[t] = COLOR_ARRAY[i]||"white");
+
+    renderLeaderboard();
+    renderLineups();
+    renderDriverRaceTable();
+    renderTradeHistory();
+    await fetchFreeAgents();          // load undrafted for this season
+    populateTeamDropdowns();          // now includes "Free Agency"
+  } catch (e) {
+    console.error(e);
+    alert("Error loading season data.");
   }
 }
 
-// Fetch draft-phase drivers and filter out those in locked teams
-async function loadFreeAgents() {
-  try {
-    const res = await fetch(`${backendUrl}/get_available_drivers`);
-    const j   = await res.json();
-    // Filter based on locked season roster
-    const drafted = Object.values(lockedTeams).flat();
-    freeAgents = (j.drivers || []).filter(d => !drafted.includes(d));
-    renderFreeAgents(freeAgents);
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-function assignTeamColors(teamNames) {
-  colorMap = {};
-  const sorted = [...teamNames].sort();
-  sorted.forEach((t, i) => {
-    colorMap[t] = COLOR_ARRAY[i] || "white";
-  });
-}
-
-function renderLeaderboard(points) {
+// 2) Leaderboard
+function renderLeaderboard() {
   const tbl = document.getElementById("leaderboardTable");
-  tbl.innerHTML = "<tr><th>Fantasy Team</th><th>Total Points</th></tr>";
-  Object.entries(points)
-    .sort((a,b) => b[1] - a[1])
-    .forEach(([team, pts]) => {
-      tbl.innerHTML +=
-        `<tr>
-           <td style=\"color:${colorMap[team]||'white'}\">${team}</td>
-           <td>${pts}</td>
-         </tr>`;
+  tbl.innerHTML = `<tr><th>Fantasy Team</th><th>Total Points</th></tr>`;
+  Object.entries(lockedPoints)
+    .sort((a,b)=>b[1]-a[1])
+    .forEach(([team,pts])=>{
+      const color = colorMap[team]||"white";
+      tbl.innerHTML += `<tr>
+        <td style="color:${color}">${team}</td>
+        <td>${pts}</td>
+      </tr>`;
     });
 }
 
-function renderLineups(teams) {
+// 3) Lineups (current rosters)
+function renderLineups() {
   const tbl = document.getElementById("lineupsTable");
-  tbl.innerHTML = "<tr>" +
-    Object.keys(teams)
-      .map(t => `<th style=\"color:${colorMap[t]||'white'}\">${t}</th>`)
-      .join("") +
-    "</tr>";
-  const maxLen = Math.max(...Object.values(teams).map(r => r.length));
-  for (let i = 0; i < maxLen; i++) {
-    let row = "<tr>";
-    Object.values(teams).forEach(drivers => {
-      row += `<td>${drivers[i] || ""}</td>`;
-    });
-    row += "</tr>";
-    tbl.innerHTML += row;
+  // header
+  let html = "<tr>";
+  Object.keys(lockedTeams).forEach(team=>{
+    const c = colorMap[team]||"white";
+    html += `<th style="color:${c}">${team}</th>`;
+  });
+  html += "</tr>";
+
+  // find max roster length (should be 6)
+  const maxRows = Math.max(...Object.values(lockedTeams).map(r=>r.length));
+  for (let i = 0; i < maxRows; i++) {
+    html += "<tr>";
+    for (const roster of Object.values(lockedTeams)) {
+      html += `<td>${roster[i]||""}</td>`;
+    }
+    html += "</tr>";
   }
+
+  tbl.innerHTML = html;
 }
 
-function renderDriverRaceTable(raceData) {
+// 4) Race-by-race breakdown
+function renderDriverRaceTable() {
   const tbl = document.getElementById("driverRaceTable");
-  const driversSet = new Set();
-  Object.values(lockedTeams).forEach(arr => arr.forEach(d => driversSet.add(d)));
-  Object.values(raceData).forEach(rp => Object.keys(rp).forEach(d => driversSet.add(d)));
-  const list = Array.from(driversSet).sort();
+  // header
+  let html = "<tr><th>Driver</th>";
+  RACE_LIST.forEach(r=> html+=`<th>${r}</th>`);
+  html += "</tr>";
 
-  tbl.innerHTML =
-    "<tr><th>Driver</th>" +
-    RACE_LIST.map(r => `<th>${r}</th>`).join("") +
-    "</tr>";
-
-  list.forEach(drv => {
-    let r = `<tr><td>${drv}</td>`;
-    RACE_LIST.forEach(rn => {
-      const info = (raceData[rn] || {})[drv] || {};
-      const pts  = info.points ?? "";
-      const col  = info.team ? (colorMap[info.team] || "white") : "white";
-      r += `<td style=\"color:${col}\">${pts}</td>`;
-    });
-    r += `</tr>`;
-    tbl.innerHTML += r;
+  // all drivers drafted or free-agent who've since been picked up
+  const drivers = new Set();
+  Object.values(lockedTeams).flat().forEach(d=>drivers.add(d));
+  Object.values(racePoints).forEach(rObj=>{
+    Object.keys(rObj).forEach(d=>drivers.add(d));
   });
 
-  if (!list.length) {
-    tbl.innerHTML = `<tr><td colspan=\"${RACE_LIST.length+1}\">No drafted drivers found.</td></tr>`;
-  }
+  // rows
+  drivers.forEach(driver=>{
+    html += `<tr><td>${driver}</td>`;
+    RACE_LIST.forEach(r=>{
+      let pts = "";
+      let clr = "white";
+      if (racePoints[r] && racePoints[r][driver]) {
+        pts = racePoints[r][driver].points;
+        clr = colorMap[racePoints[r][driver].team]||"white";
+      }
+      html += `<td style="color:${clr}">${pts}</td>`;
+    });
+    html += "</tr>";
+  });
+
+  tbl.innerHTML = html;
 }
 
-function renderTradeHistory(hist) {
+// 5) Trade history
+function renderTradeHistory() {
   const ul = document.getElementById("tradeHistory");
   ul.innerHTML = "";
-  hist.forEach(txt => {
+  tradeHistory.forEach(entry=>{
     const li = document.createElement("li");
-    li.textContent = txt;
+    li.textContent = entry;
     ul.appendChild(li);
   });
 }
 
-function populateTeamDropdowns(teams) {
+// 6) Fetch free agents (undrafted) *against* locked-season rosters
+async function fetchFreeAgents() {
+  try {
+    const res = await fetch(`${backendUrl}/get_available_drivers?season_id=${encodeURIComponent(currentSeasonId)}`);
+    const data = await res.json();
+    freeAgents = data.drivers || [];
+    renderFreeAgents();
+  } catch(e) {
+    console.error("Free-agent fetch failed", e);
+    freeAgents = [];
+  }
+}
+
+// 7) Render free agents in the UL
+function renderFreeAgents() {
+  const ul = document.getElementById("undraftedList");
+  ul.innerHTML = freeAgents.map(d=>`<li>${d}</li>`).join("");
+}
+
+// 8) Populate From/To dropdowns (including Free Agency)
+function populateTeamDropdowns() {
   const from = document.getElementById("fromTeamSelect");
   const to   = document.getElementById("toTeamSelect");
-  from.innerHTML = "<option value=''>Select Team</option>";
-  to.innerHTML   = "<option value=''>Select Team</option>";
-  Object.keys(teams).forEach(t => {
-    from.innerHTML += `<option value=\"${t}\">${t}</option>`;
-    to.innerHTML   += `<option value=\"${t}\">${t}</option>`;
+  from.innerHTML = `<option value="">Select…</option>`;
+  to.innerHTML   = `<option value="">Select…</option>`;
+  // each locked team
+  Object.keys(lockedTeams).forEach(team=>{
+    from.innerHTML += `<option value="${team}">${team}</option>`;
+    to.innerHTML   += `<option value="${team}">${team}</option>`;
   });
-  to.innerHTML += `<option value=\"__FREE_AGENCY__\">Free Agency</option>`;
+  // add free agency only to "To"
+  to.innerHTML += `<option value="__free_agency__">Free Agency</option>`;
 }
 
+// 9) Populate the driver lists when a team (or free agency) is picked
 function populateFromDrivers() {
-  const sel  = document.getElementById("fromDriversSelect");
-  const team = document.getElementById("fromTeamSelect").value;
+  const sel = document.getElementById("fromDriversSelect");
+  const t   = document.getElementById("fromTeamSelect").value;
   sel.innerHTML = "";
-  if (lockedTeams[team]) {
-    lockedTeams[team].forEach(d => sel.innerHTML += `<option value=\"${d}\">${d}</option>`);
+  if (t && lockedTeams[t]) {
+    lockedTeams[t].forEach(d=>{
+      sel.innerHTML += `<option value="${d}">${d}</option>`;
+    });
   }
 }
-
 function populateToDrivers() {
-  const sel  = document.getElementById("toDriversSelect");
-  const team = document.getElementById("toTeamSelect").value;
+  const sel = document.getElementById("toDriversSelect");
+  const t   = document.getElementById("toTeamSelect").value;
   sel.innerHTML = "";
-  if (team === "__FREE_AGENCY__") {
-    freeAgents.forEach(d => sel.innerHTML += `<option value=\"${d}\">${d}</option>`);
-  } else if (lockedTeams[team]) {
-    lockedTeams[team].forEach(d => sel.innerHTML += `<option value=\"${d}\">${d}</option>`);
+  if (t === "__free_agency__") {
+    freeAgents.forEach(d=>{
+      sel.innerHTML += `<option value="${d}">${d}</option>`;
+    });
+  } else if (t && lockedTeams[t]) {
+    lockedTeams[t].forEach(d=>{
+      sel.innerHTML += `<option value="${d}">${d}</option>`;
+    });
   }
 }
 
+// 10) Propose a locked trade (drivers + sweetener)
 async function proposeLockedTrade() {
-  if (!currentSeasonId) return alert("No season_id!");
+  if (!currentSeasonId) return alert("No season!");
   const fromTeam = document.getElementById("fromTeamSelect").value;
   const toTeam   = document.getElementById("toTeamSelect").value;
-  const fromDrivers = Array.from(document.getElementById("fromDriversSelect").selectedOptions).map(o => o.value);
-  const toDrivers   = Array.from(document.getElementById("toDriversSelect").selectedOptions).map(o => o.value);
-  const fromPts = parseInt(document.getElementById("fromSweetener").value||0, 10);
-  const toPts   = parseInt(document.getElementById("toSweetener").value||0, 10);
+  const fromDrivers = Array.from(document.getElementById("fromDriversSelect").selectedOptions).map(o=>o.value);
+  const toDrivers   = Array.from(document.getElementById("toDriversSelect").selectedOptions).map(o=>o.value);
+  const fromPts = parseInt(document.getElementById("fromSweetener").value)||0;
+  const toPts   = parseInt(document.getElementById("toSweetener").value)||0;
+
+  const payload = { from_team: fromTeam, to_team: toTeam,
+                    drivers_from_team: fromDrivers,
+                    drivers_to_team:   toDrivers,
+                    from_team_points: fromPts,
+                    to_team_points:   toPts };
 
   try {
     const res = await fetch(
       `${backendUrl}/trade_locked?season_id=${encodeURIComponent(currentSeasonId)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from_team: fromTeam,
-          to_team: toTeam,
-          drivers_from_team: fromDrivers,
-          drivers_to_team: toDrivers,
-          from_team_points: fromPts,
-          to_team_points: toPts
-        })
-      }
+      { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }
+    );
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.detail||j.error);
+    alert(j.message);
+    // reload everything
+    await loadSeasonData(currentSeasonId);
+  } catch(e) {
+    alert(e.message||e);
+  }
+}
+
+// 11) Refresh race points (latest)
+async function refreshRacePoints() {
+  if (!currentSeasonId) return alert("No season!");
+  try {
+    const res = await fetch(
+      `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}&race_id=latest`,
+      { method:"POST" }
     );
     const j = await res.json();
     if (!res.ok) throw new Error(j.detail||j.error);
     alert(j.message);
     await loadSeasonData(currentSeasonId);
-    loadFreeAgents(); // refresh free agents after trade
-  } catch (err) {
-    alert(err.message || err);
+  } catch(e) {
+    alert(e.message||e);
   }
-}
-
-async function refreshRacePoints() {
-  if (!currentSeasonId) return alert("No season_id!");
-  const nextRace = processedRaces.length
-    ? Math.max(...processedRaces.map(r => parseInt(r,10))) + 1
-    : 4;
-
-  try {
-    const res = await fetch(
-      `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}&race_id=${encodeURIComponent(nextRace)}`,
-      { method: "POST" }
-    );
-    const j = await res.json();
-    if (!res.ok) {
-      if (j.detail?.includes("processed")) {
-        return alert("No new races to update points.");
-      }
-      throw new Error(j.detail||j.error);
-    }
-    alert(j.message);
-    await loadSeasonData(currentSeasonId);
-    loadFreeAgents();
-  } catch (err) {
-    alert(err.message || err);
-  }
-}
-
-function renderFreeAgents(drivers) {
-  const ul = document.getElementById("undraftedList");
-  if (!ul) return;
-  ul.innerHTML = drivers.map(d => `<li>${d}</li>`).join("");
 }
