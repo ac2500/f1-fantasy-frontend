@@ -7,6 +7,7 @@ const RACE_LIST = [
   "Canada","Austria","UK","Belgium","Hungary","Netherlands",
   "Monza","Azerbaijan","Singapore","Texas","Mexico","Brazil",
   "Vegas","Qatar","Abu Dhabi"
+];
 
   // map human race names → Ergast round numbers
 const ROUND_MAP = {
@@ -32,7 +33,7 @@ const ROUND_MAP = {
   "Qatar":         23,
   "Abu Dhabi":     24
 };
-];
+
 
 let currentSeasonId = null;
 let lockedTeams    = {};   // { teamName: [driver,…] }
