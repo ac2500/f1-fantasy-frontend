@@ -235,24 +235,18 @@ async function refreshRacePoints() {
     return alert("No season_id in context!");
   }
 
-  let nextRace;
-  if (processedRaces.length) {
-    nextRace = Math.max(...processedRaces.map(r => parseInt(r, 10))) + 1;
-  } else {
-    nextRace = 4; // start at Imola
-  }
-
   try {
+    // always ask the backend for the real “next” round
     const res = await fetch(
-      `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}&race_id=${encodeURIComponent(nextRace)}`,
+      `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}&race_id=latest`,
       { method: "POST" }
     );
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || json.error);
     alert(json.message);
+    // reload everything (including processedRaces & the grid)
     await loadSeasonData(currentSeasonId);
   } catch (err) {
-    // if race already processed, show friendly message
     if (err.message.includes("already been processed")) {
       alert("No new races to update points.");
     } else {
