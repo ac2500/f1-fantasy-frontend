@@ -229,41 +229,34 @@ async function proposeLockedTrade() {
   }
 }
 
-// 11) Refresh Race Points – smartly pick the next round and re-render everything
+// 11) Refresh Race Points
 async function refreshRacePoints() {
   if (!currentSeasonId) {
     return alert("No season_id in context!");
   }
 
-  // parse and filter out any non-numeric entries, then pick the next one
-  const numeric = processedRaces
-    .map(r => parseInt(r,10))
-    .filter(n => Number.isInteger(n));
-  const nextRace = numeric.length
-    ? Math.max(...numeric) + 1
-    : 4;
+  let nextRace;
+  if (processedRaces.length) {
+    nextRace = Math.max(...processedRaces.map(r => parseInt(r, 10))) + 1;
+  } else {
+    nextRace = 4; // start at Imola
+  }
 
   try {
     const res = await fetch(
-      `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}` +
-      `&race_id=${encodeURIComponent(nextRace)}`,
+      `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}&race_id=${encodeURIComponent(nextRace)}`,
       { method: "POST" }
     );
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || json.error);
-
     alert(json.message);
-
-    // reload ALL the season data (this will update processedRaces, lockedPoints, racePoints, etc.)
     await loadSeasonData(currentSeasonId);
-
-    // now that racePoints is fresh, re-draw the per-race table
-    renderDriverRaceTable(racePoints);
   } catch (err) {
-    // if we tried to fetch a round that doesn't exist or is already processed:
-    if (err.message.includes("already been processed") || err.message.includes("Error fetching race data")) {
-      return alert("No new races to update points.");
+    // if race already processed, show friendly message
+    if (err.message.includes("already been processed")) {
+      alert("No new races to update points.");
+    } else {
+      alert(err.message || err);
     }
-    alert(err.message || err);
   }
 }
