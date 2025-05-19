@@ -53,8 +53,8 @@ async function loadSeasonData(seasonId) {
     renderLineups();
     renderDriverRaceTable();
     renderTradeHistory();
-    await fetchFreeAgents();          // now that lockedTeams is known
-    populateTeamDropdowns();          // includes Free Agency
+    await fetchFreeAgents();
+    populateTeamDropdowns(lockedTeams);  // now includes “Free Agency”
   } catch (e) {
     console.error(e);
     alert(e.message || "Error loading season data");
@@ -63,19 +63,18 @@ async function loadSeasonData(seasonId) {
 
 async function fetchFreeAgents() {
   try {
-    // call free-agent endpoint with season_id so it only returns undrafted for this season
     const res = await fetch(
-      `${backendUrl}/get_available_drivers?season_id=${encodeURIComponent(currentSeasonId)}`
+      `${backendUrl}/get_free_agents?season_id=${encodeURIComponent(currentSeasonId)}`
     );
     if (!res.ok) throw new Error("Failed to fetch free agents");
     const data = await res.json();
-    const drafted = new Set(Object.values(lockedTeams).flat());
-    freeAgents = (data.drivers||[]).filter(d => !drafted.has(d));
+    freeAgents = data.drivers || [];
+    renderFreeAgents(freeAgents);
   } catch (e) {
-    console.error("Free-agent fetch failed", e);
+    console.error("Free-agent fetch error", e);
     freeAgents = [];
+    renderFreeAgents(freeAgents);
   }
-  renderFreeAgents();
 }
 
 // 2) Leaderboard
