@@ -229,24 +229,37 @@ async function proposeLockedTrade() {
   }
 }
 
-// 10) Refresh Race Points
+// 10) Refresh Race Points – pick the next numeric round
 async function refreshRacePoints() {
-  const nextRace = processedRaces.length
-    ? Math.max(...processedRaces.map(r=>parseInt(r,10)))+1
+  if (!currentSeasonId) return alert("No season_id in context!");
+
+  // turn ["4","5","Imola","6"] into [4,5,6]
+  const numeric = processedRaces
+    .map(r => parseInt(r, 10))
+    .filter(n => !isNaN(n));
+
+  // if we have seen rounds, next = max+1, else start at 4
+  const nextRace = numeric.length > 0
+    ? Math.max(...numeric) + 1
     : 4;
+
+  // if they’ve already processed all known rounds...
+  if (nextRace > RACE_LIST.length) {
+    return alert("No new races to update points.");
+  }
+
   try {
     const res = await fetch(
-      `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}&race_id=${encodeURIComponent(nextRace)}`,
-      { method:"POST" }
+      `${backendUrl}/update_race_points?` +
+      `season_id=${encodeURIComponent(currentSeasonId)}` +
+      `&race_id=${encodeURIComponent(nextRace)}`,
+      { method: "POST" }
     );
     const j = await res.json();
-    if (!res.ok) {
-      if (j.detail?.includes("processed")) return alert("No new races to update.");
-      throw new Error(j.detail||j.error);
-    }
+    if (!res.ok) throw new Error(j.detail || j.error);
     alert(j.message);
     await loadSeasonData(currentSeasonId);
-  } catch(e) {
-    alert(e.message||e);
+  } catch (err) {
+    alert(err.message || err);
   }
 }
