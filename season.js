@@ -4,85 +4,91 @@ const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
 // Static list of 2025 rounds
 const RACE_LIST = [
-  "Bahrain","Saudi Arabia","Miami","Imola","Monaco","Spain",
-  "Canada","Austria","UK","Belgium","Hungary","Netherlands",
-  "Monza","Azerbaijan","Singapore","Texas","Mexico","Brazil",
-  "Vegas","Qatar","Abu Dhabi"
+  "Bahrain", "Saudi Arabia", "Miami", "Imola", "Monaco", "Spain",
+  "Canada", "Austria", "UK", "Belgium", "Hungary", "Netherlands",
+  "Monza", "Azerbaijan", "Singapore", "Texas", "Mexico", "Brazil",
+  "Vegas", "Qatar", "Abu Dhabi"
 ];
 
-// map human race names → Ergast round numbers
+// Map human race names → round numbers
 const ROUND_MAP = {
-  "Bahrain":        4,
-  "Saudi Arabia":   5,
-  "Miami":          6,
-  "Imola":          7,
-  "Monaco":         8,
-  "Spain":          9,
-  "Canada":        10,
-  "Austria":       11,
-  "UK":            12,
-  "Belgium":       13,
-  "Hungary":       14,
-  "Netherlands":   15,
-  "Monza":         16,
-  "Azerbaijan":    17,
-  "Singapore":     18,
-  "Texas":         19,
-  "Mexico":        20,
-  "Brazil":        21,
-  "Vegas":         22,
-  "Qatar":         23,
-  "Abu Dhabi":     24
+  "Bahrain":     4,
+  "Saudi Arabia":5,
+  "Miami":       6,
+  "Imola":       7,
+  "Monaco":      8,
+  "Spain":       9,
+  "Canada":     10,
+  "Austria":    11,
+  "UK":         12,
+  "Belgium":    13,
+  "Hungary":    14,
+  "Netherlands":15,
+  "Monza":      16,
+  "Azerbaijan": 17,
+  "Singapore":  18,
+  "Texas":      19,
+  "Mexico":     20,
+  "Brazil":     21,
+  "Vegas":      22,
+  "Qatar":      23,
+  "Abu Dhabi":  24
 };
 
+// App state
 let currentSeasonId = null;
-let lockedTeams    = {};
-let lockedPoints   = {};
-let racePoints     = {};
-let tradeHistory   = [];
-let freeAgents     = [];
-let processedRaces = [];
-const COLOR_ARRAY  = ["green","blue","yellow","orange","purple"];
-let colorMap       = {};
+let lockedTeams     = {};
+let lockedPoints    = {};
+let racePoints      = {};
+let tradeHistory    = [];
+let freeAgents      = [];
+let processedRaces  = [];
+const COLOR_ARRAY   = ["green", "blue", "yellow", "orange", "purple"];
+let colorMap        = {};
 
-// ensure we only run after the DOM is fully parsed
+// Only run after the DOM is fully parsed
 document.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
-  const sid = params.get("season_id");
+  const sid    = params.get("season_id");
   if (!sid) {
     alert("No season_id provided!");
     return;
   }
   currentSeasonId = sid;
 
-  // kick off loading all data
+  // Load and render everything
   loadSeasonData(sid);
 
-  // wire up change handlers if your HTML doesn't already use onchange attributes:
+  // Wire up trade dropdown change handlers
   const fromSel = document.getElementById("fromTeamSelect");
   const toSel   = document.getElementById("toTeamSelect");
   if (fromSel) fromSel.addEventListener("change", populateFromDrivers);
   if (toSel)   toSel  .addEventListener("change", populateToDrivers);
 });
 
+
+// Fetch locked-season data and render
 async function loadSeasonData(seasonId) {
   try {
-    // fetch locked-season record
     const res = await fetch(
       `${backendUrl}/get_season?season_id=${encodeURIComponent(seasonId)}`
     );
     if (!res.ok) throw new Error("Failed to load season");
     const data = await res.json();
 
+    // Populate state
     lockedTeams    = data.teams           || {};
     lockedPoints   = data.points          || {};
     tradeHistory   = data.trade_history  || [];
     racePoints     = data.race_points    || {};
     processedRaces = data.processed_races|| [];
 
-    // assign colors in sorted order
-    Object.keys(lockedTeams).sort()
-      .forEach((t,i) => colorMap[t] = COLOR_ARRAY[i]||"white");
+    // Assign team colors
+    Object.keys(lockedTeams)
+      .sort()
+      .forEach((team, i) => {
+        colorMap[team] = COLOR_ARRAY[i] || "white";
+      });
 
     renderLeaderboard();
     renderLineups();
@@ -91,12 +97,14 @@ async function loadSeasonData(seasonId) {
     await fetchFreeAgents();
     populateTeamDropdowns();
 
-  } catch (e) {
-    console.error(e);
-    alert(e.message || "Error loading season data");
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Error loading season data");
   }
 }
 
+
+// Fetch free agents
 async function fetchFreeAgents() {
   try {
     const res = await fetch(
@@ -105,82 +113,100 @@ async function fetchFreeAgents() {
     if (!res.ok) throw new Error("Failed to fetch free agents");
     const data = await res.json();
     freeAgents = data.drivers || [];
-  } catch (e) {
-    console.error("Free-agent fetch error", e);
+  } catch (err) {
+    console.error("Free-agent fetch error", err);
     freeAgents = [];
   }
   renderFreeAgents();
 }
 
-// 2) Leaderboard
+
+// 2) Leaderboard (hide __FREE_AGENCY__)
 function renderLeaderboard() {
   const tbl = document.getElementById("leaderboardTable");
   tbl.innerHTML = `<tr><th>Fantasy Team</th><th>Total Points</th></tr>`;
 
   Object.entries(lockedPoints)
     .filter(([team]) => team !== "__FREE_AGENCY__")
-    .sort((a, b) => b[1] - a[1])
+    .sort((a,b) => b[1] - a[1])
     .forEach(([team, pts]) => {
-      const c = colorMap[team] || "white";
+      const color = colorMap[team] || "white";
       tbl.innerHTML += `
-        <tr>
-          <td style="color:${c}">${team}</td>
+        <tr style="color:${color}">
+          <td>${team}</td>
           <td>${pts.toFixed(2)}</td>
         </tr>
       `;
     });
 }
 
+
 // 3) Lineups
 function renderLineups() {
   const tbl = document.getElementById("lineupsTable");
   let html = "<tr>";
+
   Object.keys(lockedTeams).forEach(team => {
-    html += `<th style="color:${colorMap[team]||"white"}">${team}</th>`;
+    const col = colorMap[team] || "white";
+    html += `<th style="color:${col}">${team}</th>`;
   });
   html += "</tr>";
 
-  const maxLen = Math.max(...Object.values(lockedTeams).map(r=>r.length));
+  const maxLen = Math.max(...Object.values(lockedTeams).map(r => r.length));
   for (let i = 0; i < maxLen; i++) {
     html += "<tr>";
     Object.values(lockedTeams).forEach(roster => {
-      html += `<td>${roster[i]||""}</td>`;
+      html += `<td>${roster[i] || ""}</td>`;
     });
     html += "</tr>";
   }
   tbl.innerHTML = html;
 }
 
-// 4) Race-by-race table
+
+// 4) Race-by-race table (include dropped & free agents)
 function renderDriverRaceTable() {
   const tbl = document.getElementById("driverRaceTable");
   tbl.innerHTML = "";
 
-  // 1) Build driver→team mapping
+  // Build driver→team map
   const driverToTeam = {};
   Object.entries(lockedTeams).forEach(([team, roster]) => {
-    roster.forEach(d => {
-      driverToTeam[d] = team;
+    roster.forEach(driver => {
+      driverToTeam[driver] = team;
     });
   });
 
-  // 2) Flatten drivers in team order
-  const driversByTeam = [];
+  // Current roster in team order
+  const currentDrivers = [];
   Object.values(lockedTeams).forEach(roster =>
-    roster.forEach(d => driversByTeam.push(d))
+    roster.forEach(d => currentDrivers.push(d))
   );
 
-  // 3) Compute each driver’s total
+  // Collect all drivers who've scored
+  const allDrivers = new Set(currentDrivers);
+  processedRaces.forEach(rid => {
+    const rd = racePoints[rid] || {};
+    Object.keys(rd).forEach(d => allDrivers.add(d));
+  });
+
+  // Final ordered list: roster first, then historical-only
+  const driversByTeam = [...currentDrivers];
+  allDrivers.forEach(d => {
+    if (!currentDrivers.includes(d)) driversByTeam.push(d);
+  });
+
+  // Compute totals
   const driverTotals = {};
   driversByTeam.forEach(d => (driverTotals[d] = 0));
   processedRaces.forEach(rid => {
-    const roundData = racePoints[rid] || {};
+    const rd = racePoints[rid] || {};
     driversByTeam.forEach(d => {
-      driverTotals[d] += roundData[d]?.points || 0;
+      driverTotals[d] += rd[d]?.points || 0;
     });
   });
 
-  // 4) Header with “Total” column
+  // Header
   const thead = document.createElement("thead");
   thead.innerHTML = `
     <tr>
@@ -191,34 +217,32 @@ function renderDriverRaceTable() {
   `;
   tbl.appendChild(thead);
 
-  // 5) Body: one <tr> per driver, colored by team
+  // Body
   const tbody = document.createElement("tbody");
   driversByTeam.forEach(d => {
-    // pick up the driver’s team color, defaulting to white
-    const team = driverToTeam[d];
+    const team  = driverToTeam[d];
     const color = colorMap[team] || "white";
-
-    // build cells
-    const totalCell = `<td>${driverTotals[d].toFixed(2)}</td>`;
+    const total = driverTotals[d].toFixed(2);
     const raceCells = RACE_LIST.map(r => {
       const pts = racePoints[String(ROUND_MAP[r])]?.[d]?.points;
       return `<td>${pts != null ? pts.toFixed(2) : ""}</td>`;
     }).join("");
 
-    // assemble & style the row
     const tr = document.createElement("tr");
     tr.style.color = color;
-    tr.innerHTML = `<td>${d}</td>${totalCell}${raceCells}`;
+    tr.innerHTML = `<td>${d}</td><td>${total}</td>${raceCells}`;
     tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
 }
 
+
 // 5) Trade history
 function renderTradeHistory() {
   const ul = document.getElementById("tradeHistory");
-  ul.innerHTML = tradeHistory.map(t => `<li>${t}</li>`).join("");
+  ul.innerHTML = tradeHistory.map(h => `<li>${h}</li>`).join("");
 }
+
 
 // 6) Free agents list
 function renderFreeAgents() {
@@ -226,36 +250,43 @@ function renderFreeAgents() {
   ul.innerHTML = freeAgents.map(d => `<li>${d}</li>`).join("");
 }
 
-// 7) Dropdowns
+
+// 7) Populate trade dropdowns
 function populateTeamDropdowns() {
   const from = document.getElementById("fromTeamSelect");
   const to   = document.getElementById("toTeamSelect");
   from.innerHTML = `<option value="">Select Team</option>`;
   to  .innerHTML = `<option value="">Select Team</option>`;
+
   Object.keys(lockedTeams).forEach(t => {
     from.innerHTML += `<option value="${t}">${t}</option>`;
     to  .innerHTML += `<option value="${t}">${t}</option>`;
   });
+
   if (freeAgents.length) {
     to.innerHTML += `<option value="__FREE_AGENCY__">Free Agency</option>`;
   }
 }
 
+
 // 8) Populate driver selects
 function populateFromDrivers() {
-  const sel = document.getElementById("fromDriversSelect");
+  const sel  = document.getElementById("fromDriversSelect");
   const team = document.getElementById("fromTeamSelect").value;
   sel.innerHTML = "";
   (lockedTeams[team] || []).forEach(d => {
     sel.innerHTML += `<option value="${d}">${d}</option>`;
   });
 }
+
 function populateToDrivers() {
-  const sel = document.getElementById("toDriversSelect");
+  const sel  = document.getElementById("toDriversSelect");
   const team = document.getElementById("toTeamSelect").value;
   sel.innerHTML = "";
   if (team === "__FREE_AGENCY__") {
-    freeAgents.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
+    freeAgents.forEach(d => {
+      sel.innerHTML += `<option value="${d}">${d}</option>`;
+    });
   } else {
     (lockedTeams[team] || []).forEach(d => {
       sel.innerHTML += `<option value="${d}">${d}</option>`;
@@ -263,47 +294,56 @@ function populateToDrivers() {
   }
 }
 
-// 9) Propose trade
+
+// 9) Propose locked trade
 async function proposeLockedTrade() {
   const fromTeam = document.getElementById("fromTeamSelect").value;
   const toTeam   = document.getElementById("toTeamSelect").value;
-  const fromD    = Array.from(document.getElementById("fromDriversSelect").selectedOptions).map(o=>o.value);
-  const toD      = Array.from(document.getElementById("toDriversSelect").selectedOptions).map(o=>o.value);
-  const fromPts  = parseInt(document.getElementById("fromSweetener").value)||0;
-  const toPts    = parseInt(document.getElementById("toSweetener").value)||0;
+  const fromDrivers = Array.from(
+    document.getElementById("fromDriversSelect").selectedOptions
+  ).map(o => o.value);
+  const toDrivers = Array.from(
+    document.getElementById("toDriversSelect").selectedOptions
+  ).map(o => o.value);
+  const fromPts = parseFloat(document.getElementById("fromSweetener").value) || 0;
+  const toPts   = parseFloat(document.getElementById("toSweetener").value)   || 0;
+
   try {
     const res = await fetch(
       `${backendUrl}/trade_locked?season_id=${encodeURIComponent(currentSeasonId)}`,
       {
         method: "POST",
-        headers:{ "Content-Type":"application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           from_team: fromTeam,
           to_team: toTeam,
-          drivers_from_team: fromD,
-          drivers_to_team: toD,
+          drivers_from_team: fromDrivers,
+          drivers_to_team: toDrivers,
           from_team_points: fromPts,
           to_team_points: toPts
         })
       }
     );
-    const j = await res.json();
-    if (!res.ok) throw new Error(j.detail||j.error);
-    alert(j.message);
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || json.error);
+    alert(json.message);
     await loadSeasonData(currentSeasonId);
-  } catch(e) {
-    alert(e.message||e);
+
+  } catch (err) {
+    alert(err.message || err);
   }
 }
 
-// 11) Refresh Race Points
+
+// 10) Refresh race points
 async function refreshRacePoints() {
   if (!currentSeasonId) {
-    return alert("No season_id in context!");
+    alert("No season_id in context!");
+    return;
   }
 
   try {
-    // always ask the backend for the real “next” round
     const res = await fetch(
       `${backendUrl}/update_race_points?season_id=${encodeURIComponent(currentSeasonId)}&race_id=latest`,
       { method: "POST" }
@@ -311,13 +351,9 @@ async function refreshRacePoints() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || json.error);
     alert(json.message);
-    // reload everything (including processedRaces & the grid)
     await loadSeasonData(currentSeasonId);
+
   } catch (err) {
-    if (err.message.includes("already been processed")) {
-      alert("No new races to update points.");
-    } else {
-      alert(err.message || err);
-    }
+    alert(err.message || err);
   }
 }
