@@ -156,23 +156,31 @@ function renderDriverRaceTable() {
   const tbl = document.getElementById("driverRaceTable");
   tbl.innerHTML = "";
 
-  // group drivers by team
+  // 1) Build driver→team mapping
+  const driverToTeam = {};
+  Object.entries(lockedTeams).forEach(([team, roster]) => {
+    roster.forEach(d => {
+      driverToTeam[d] = team;
+    });
+  });
+
+  // 2) Flatten drivers in team order
   const driversByTeam = [];
   Object.values(lockedTeams).forEach(roster =>
     roster.forEach(d => driversByTeam.push(d))
   );
 
-  // compute totals
+  // 3) Compute each driver’s total
   const driverTotals = {};
-  driversByTeam.forEach(d => driverTotals[d] = 0);
+  driversByTeam.forEach(d => (driverTotals[d] = 0));
   processedRaces.forEach(rid => {
-    const rd = racePoints[rid] || {};
+    const roundData = racePoints[rid] || {};
     driversByTeam.forEach(d => {
-      driverTotals[d] += rd[d]?.points || 0;
+      driverTotals[d] += roundData[d]?.points || 0;
     });
   });
 
-  // header
+  // 4) Header with “Total” column
   const thead = document.createElement("thead");
   thead.innerHTML = `
     <tr>
@@ -183,20 +191,24 @@ function renderDriverRaceTable() {
   `;
   tbl.appendChild(thead);
 
-  // body
+  // 5) Body: one <tr> per driver, colored by team
   const tbody = document.createElement("tbody");
   driversByTeam.forEach(d => {
-    const total = driverTotals[d].toFixed(2);
-    const cells = [
-      `<td>${d}</td>`,
-      `<td>${total}</td>`,
-      ...RACE_LIST.map(r => {
-        const p = racePoints[ String(ROUND_MAP[r]) ]?.[d]?.points;
-        return `<td>${p != null ? p.toFixed(2) : ""}</td>`;
-      })
-    ].join("");
+    // pick up the driver’s team color, defaulting to white
+    const team = driverToTeam[d];
+    const color = colorMap[team] || "white";
+
+    // build cells
+    const totalCell = `<td>${driverTotals[d].toFixed(2)}</td>`;
+    const raceCells = RACE_LIST.map(r => {
+      const pts = racePoints[String(ROUND_MAP[r])]?.[d]?.points;
+      return `<td>${pts != null ? pts.toFixed(2) : ""}</td>`;
+    }).join("");
+
+    // assemble & style the row
     const tr = document.createElement("tr");
-    tr.innerHTML = cells;
+    tr.style.color = color;
+    tr.innerHTML = `<td>${d}</td>${totalCell}${raceCells}`;
     tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
