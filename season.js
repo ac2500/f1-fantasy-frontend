@@ -1,4 +1,5 @@
 // season.js
+
 const backendUrl = "https://f1-fantasy-backend-mddo.onrender.com";
 
 // Static list of 2025 rounds
@@ -9,7 +10,7 @@ const RACE_LIST = [
   "Vegas","Qatar","Abu Dhabi"
 ];
 
-  // map human race names → Ergast round numbers
+// map human race names → Ergast round numbers
 const ROUND_MAP = {
   "Bahrain":        4,
   "Saudi Arabia":   5,
@@ -34,19 +35,18 @@ const ROUND_MAP = {
   "Abu Dhabi":     24
 };
 
-
 let currentSeasonId = null;
-let lockedTeams    = {};   // { teamName: [driver,…] }
-let lockedPoints   = {};   // { teamName: totalPoints }
-let racePoints     = {};   // { raceName: { driverName: {points,team} } }
-let tradeHistory   = [];   // [ "...", … ]
-let freeAgents     = [];   // undrafted for this locked season
-let processedRaces = [];   // [ "4", "5", … ]
+let lockedTeams    = {};
+let lockedPoints   = {};
+let racePoints     = {};
+let tradeHistory   = [];
+let freeAgents     = [];
+let processedRaces = [];
+const COLOR_ARRAY  = ["green","blue","yellow","orange","purple"];
+let colorMap       = {};
 
-const COLOR_ARRAY = ["green","blue","yellow","orange","purple"];
-let colorMap = {};
-
-window.onload = () => {
+// ensure we only run after the DOM is fully parsed
+document.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
   const sid = params.get("season_id");
   if (!sid) {
@@ -54,33 +54,43 @@ window.onload = () => {
     return;
   }
   currentSeasonId = sid;
+
+  // kick off loading all data
   loadSeasonData(sid);
-};
+
+  // wire up change handlers if your HTML doesn't already use onchange attributes:
+  const fromSel = document.getElementById("fromTeamSelect");
+  const toSel   = document.getElementById("toTeamSelect");
+  if (fromSel) fromSel.addEventListener("change", populateFromDrivers);
+  if (toSel)   toSel  .addEventListener("change", populateToDrivers);
+});
 
 async function loadSeasonData(seasonId) {
   try {
+    // fetch locked-season record
     const res = await fetch(
       `${backendUrl}/get_season?season_id=${encodeURIComponent(seasonId)}`
     );
     if (!res.ok) throw new Error("Failed to load season");
     const data = await res.json();
 
-    lockedTeams    = data.teams      || {};
-    lockedPoints   = data.points     || {};
-    tradeHistory   = data.trade_history || [];
-    racePoints     = data.race_points   || {};
-    processedRaces = data.processed_races || [];
+    lockedTeams    = data.teams           || {};
+    lockedPoints   = data.points          || {};
+    tradeHistory   = data.trade_history  || [];
+    racePoints     = data.race_points    || {};
+    processedRaces = data.processed_races|| [];
 
-    // assign colors to teams
-    const teams = Object.keys(lockedTeams).sort();
-    teams.forEach((t,i) => colorMap[t] = COLOR_ARRAY[i]||"white");
+    // assign colors in sorted order
+    Object.keys(lockedTeams).sort()
+      .forEach((t,i) => colorMap[t] = COLOR_ARRAY[i]||"white");
 
     renderLeaderboard();
     renderLineups();
     renderDriverRaceTable();
     renderTradeHistory();
     await fetchFreeAgents();
-    populateTeamDropdowns(lockedTeams);  // now includes “Free Agency”
+    populateTeamDropdowns();
+
   } catch (e) {
     console.error(e);
     alert(e.message || "Error loading season data");
@@ -95,12 +105,11 @@ async function fetchFreeAgents() {
     if (!res.ok) throw new Error("Failed to fetch free agents");
     const data = await res.json();
     freeAgents = data.drivers || [];
-    renderFreeAgents(freeAgents);
   } catch (e) {
     console.error("Free-agent fetch error", e);
     freeAgents = [];
-    renderFreeAgents(freeAgents);
   }
+  renderFreeAgents();
 }
 
 // 2) Leaderboard
@@ -127,13 +136,12 @@ function renderLineups() {
   const tbl = document.getElementById("lineupsTable");
   let html = "<tr>";
   Object.keys(lockedTeams).forEach(team => {
-    const c = colorMap[team]||"white";
-    html += `<th style="color:${c}">${team}</th>`;
+    html += `<th style="color:${colorMap[team]||"white"}">${team}</th>`;
   });
   html += "</tr>";
 
   const maxLen = Math.max(...Object.values(lockedTeams).map(r=>r.length));
-  for (let i=0; i<maxLen; i++){
+  for (let i = 0; i < maxLen; i++) {
     html += "<tr>";
     Object.values(lockedTeams).forEach(roster => {
       html += `<td>${roster[i]||""}</td>`;
@@ -146,53 +154,58 @@ function renderLineups() {
 // 4) Race-by-race table
 function renderDriverRaceTable() {
   const tbl = document.getElementById("driverRaceTable");
+  tbl.innerHTML = "";
 
-  // header row
-  let html = "<tr><th>Driver</th>";
-  RACE_LIST.forEach(raceName => {
-    html += `<th>${raceName}</th>`;
-  });
-  html += "</tr>";
+  // group drivers by team
+  const driversByTeam = [];
+  Object.values(lockedTeams).forEach(roster =>
+    roster.forEach(d => driversByTeam.push(d))
+  );
 
-  // gather every driver ever drafted or in racePoints
-  const drivers = new Set();
-  Object.values(lockedTeams).flat().forEach(d => drivers.add(d));
-  Object.values(racePoints).forEach(rp => Object.keys(rp).forEach(d => drivers.add(d)));
-
-  // one row per driver
-  Array.from(drivers).sort().forEach(driverName => {
-    html += `<tr><td>${driverName}</td>`;
-
-    RACE_LIST.forEach(raceName => {
-      // convert the human label to the Ergast round number
-      const roundNum = ROUND_MAP[raceName];
-      // pull that map of { driverName: {points, team} }
-      const info     = (racePoints[String(roundNum)] || {})[driverName];
-      const pts      = info?.points ?? "";
-      const col      = info?.team ? (colorMap[info.team] || "white") : "white";
-      html         += `<td style="color:${col}">${pts}</td>`;
+  // compute totals
+  const driverTotals = {};
+  driversByTeam.forEach(d => driverTotals[d] = 0);
+  processedRaces.forEach(rid => {
+    const rd = racePoints[rid] || {};
+    driversByTeam.forEach(d => {
+      driverTotals[d] += rd[d]?.points || 0;
     });
-
-    html += "</tr>";
   });
 
-  // if no drivers at all
-  if (drivers.size === 0) {
-    html = `<tr><td colspan="${RACE_LIST.length + 1}">No drafted drivers found.</td></tr>`;
-  }
+  // header
+  const thead = document.createElement("thead");
+  thead.innerHTML = `
+    <tr>
+      <th>Driver</th>
+      <th>Total</th>
+      ${RACE_LIST.map(r => `<th>${r}</th>`).join("")}
+    </tr>
+  `;
+  tbl.appendChild(thead);
 
-  tbl.innerHTML = html;
+  // body
+  const tbody = document.createElement("tbody");
+  driversByTeam.forEach(d => {
+    const total = driverTotals[d].toFixed(2);
+    const cells = [
+      `<td>${d}</td>`,
+      `<td>${total}</td>`,
+      ...RACE_LIST.map(r => {
+        const p = racePoints[ String(ROUND_MAP[r]) ]?.[d]?.points;
+        return `<td>${p != null ? p.toFixed(2) : ""}</td>`;
+      })
+    ].join("");
+    const tr = document.createElement("tr");
+    tr.innerHTML = cells;
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
 }
 
 // 5) Trade history
 function renderTradeHistory() {
   const ul = document.getElementById("tradeHistory");
-  ul.innerHTML = "";
-  tradeHistory.forEach(txt=>{
-    const li = document.createElement("li");
-    li.textContent = txt;
-    ul.appendChild(li);
-  });
+  ul.innerHTML = tradeHistory.map(t => `<li>${t}</li>`).join("");
 }
 
 // 6) Free agents list
@@ -201,7 +214,7 @@ function renderFreeAgents() {
   ul.innerHTML = freeAgents.map(d => `<li>${d}</li>`).join("");
 }
 
-// 7) Dropdowns (including Free Agency in “To”)
+// 7) Dropdowns
 function populateTeamDropdowns() {
   const from = document.getElementById("fromTeamSelect");
   const to   = document.getElementById("toTeamSelect");
@@ -211,7 +224,6 @@ function populateTeamDropdowns() {
     from.innerHTML += `<option value="${t}">${t}</option>`;
     to  .innerHTML += `<option value="${t}">${t}</option>`;
   });
-  // only show Free Agency if there are any
   if (freeAgents.length) {
     to.innerHTML += `<option value="__FREE_AGENCY__">Free Agency</option>`;
   }
@@ -220,20 +232,20 @@ function populateTeamDropdowns() {
 // 8) Populate driver selects
 function populateFromDrivers() {
   const sel = document.getElementById("fromDriversSelect");
-  const t   = document.getElementById("fromTeamSelect").value;
+  const team = document.getElementById("fromTeamSelect").value;
   sel.innerHTML = "";
-  (lockedTeams[t]||[]).forEach(d => {
+  (lockedTeams[team] || []).forEach(d => {
     sel.innerHTML += `<option value="${d}">${d}</option>`;
   });
 }
 function populateToDrivers() {
   const sel = document.getElementById("toDriversSelect");
-  const t   = document.getElementById("toTeamSelect").value;
+  const team = document.getElementById("toTeamSelect").value;
   sel.innerHTML = "";
-  if (t === "__FREE_AGENCY__") {
+  if (team === "__FREE_AGENCY__") {
     freeAgents.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
   } else {
-    (lockedTeams[t]||[]).forEach(d => {
+    (lockedTeams[team] || []).forEach(d => {
       sel.innerHTML += `<option value="${d}">${d}</option>`;
     });
   }
