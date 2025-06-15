@@ -51,7 +51,8 @@ th, td {
   margin-top: 30px;
 }
 
-.left-table, .right-table {
+.left-table,
+.right-table {
   width: 45%;
 }
 
@@ -92,4 +93,16 @@ button:hover {
     width: 100%;
     margin-bottom: 20px;
   }
+}
+
+/* Make the race-by-race table scroll horizontally */
+.race-table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1rem 0;
+}
+.race-table-container table {
+  width: max-content !important;
+  table-layout: auto;
 }

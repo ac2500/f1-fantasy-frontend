@@ -107,14 +107,18 @@ async function fetchFreeAgents() {
 function renderLeaderboard() {
   const tbl = document.getElementById("leaderboardTable");
   tbl.innerHTML = `<tr><th>Fantasy Team</th><th>Total Points</th></tr>`;
+
   Object.entries(lockedPoints)
-    .sort((a,b)=>b[1]-a[1])
-    .forEach(([team,pts]) => {
-      const c = colorMap[team]||"white";
-      tbl.innerHTML += `<tr>
-        <td style="color:${c}">${team}</td>
-        <td>${pts}</td>
-      </tr>`;
+    .filter(([team]) => team !== "__FREE_AGENCY__")
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([team, pts]) => {
+      const c = colorMap[team] || "white";
+      tbl.innerHTML += `
+        <tr>
+          <td style="color:${c}">${team}</td>
+          <td>${pts.toFixed(2)}</td>
+        </tr>
+      `;
     });
 }
 
